@@ -40,8 +40,8 @@ type Passtor struct {
 
 	Messages MessageCounter // handles message id and pending messages
 
-	Addr    NodeAddr     // address used to communicate with other passtors
-	Buckets [][]NodeAddr // k-buckets used in the DHT
+	Addr    NodeAddr          // address used to communicate with passtors
+	Buckets map[uint64]Bucket // k-buckets used in the DHT
 
 	Printer Printer // passtor console printer
 }
@@ -52,4 +52,17 @@ type Message struct {
 	Reply     bool      // message is a reply
 	Sender    *NodeAddr // sender identity
 	Bootstrap *bool     // non nil if message is a bootstrap message
+}
+
+// Bucket structure representing Kademlia k-buckets
+type Bucket struct {
+	Head *BucketElement
+	Tail *BucketElement
+	Size uint
+}
+
+// BucketElement represent individual elements of the k-buckets
+type BucketElement struct {
+	NodeAddr *NodeAddr
+	Next     *BucketElement
 }

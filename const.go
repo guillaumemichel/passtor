@@ -16,6 +16,8 @@ const (
 	BUFFERSIZE = 8192
 	// SHASIZE size of SHA256 hash in byte
 	SHASIZE = sha256.Size
+	// BYTELENGTH number of bits in a byte
+	BYTELENGTH = 8
 
 	// V0 verbose level 0
 	V0 = 0

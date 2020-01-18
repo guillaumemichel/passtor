@@ -38,9 +38,27 @@ func (p *Passtor) BootstrapPeer(peer net.UDPAddr) bool {
 	return p.SendMessage(msg, peer) != nil
 }
 
-// AddPeerToBucket check if a peer should be added to the DHT, and if yes, add it
-// to the appropriate bucket
+// AddPeerToBucket check if a peer should be added to the DHT, and if yes,
+// add it to the appropriate bucket
 func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
+	dist := XOR(p.NodeID, addr.NodeID)
+
+	bucket := 0
+	done := false
+	for _, b := range dist {
+		for i := BYTELENGTH - 1; i >= 0; i-- {
+			if b>>i > 0 {
+				bucket += BYTELENGTH - i - 1
+				done = true
+				break
+			}
+		}
+		if done {
+			break
+		}
+		bucket += 8
+	}
+	fmt.Println(bucket)
 	p.Printer.Print(fmt.Sprint("Adding", addr, "to k-bucket"), V2)
 }
 
@@ -53,4 +71,36 @@ func (p *Passtor) CheckPeersAlive() {
 // LookupNode lookup a node by its ID
 func (p *Passtor) LookupNode(nodeID Hash) {
 
+}
+
+// Insert a new NodeAddress in the Bucket, called only if bucket not full
+func (b *Bucket) Insert(nodeAddr NodeAddr) {
+	if b.Size >= DHTK {
+		fmt.Println("Warning: cannot insert node to full bucket!")
+		return
+	}
+	b.Size++
+	new := BucketElement{
+		NodeAddr: &nodeAddr,
+		Next:     b.Tail,
+	}
+	b.Tail = &new
+}
+
+// Replace the tail of the list by the new Node Address
+func (b *Bucket) Replace(nodeAddr NodeAddr) {
+	new := BucketElement{
+		NodeAddr: &nodeAddr,
+		Next:     b.Tail.Next,
+	}
+	b.Tail = &new
+}
+
+// MoveTailToHead moves the tail element of the list to the head
+func (b *Bucket) MoveTailToHead() {
+	newHead := b.Tail
+	b.Tail = b.Tail.Next
+	newHead.Next = nil
+	b.Head.Next = newHead
+	b.Head = newHead
 }
