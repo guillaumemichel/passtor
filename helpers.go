@@ -1,22 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"net"
-	"os"
 	"strings"
+	"time"
 )
 
 func checkErr(err error) {
 	if err != nil {
 		panic(err)
-	}
-}
-
-func checkErrMsg(err error, msg string) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: "+msg+"\n")
-		os.Exit(1)
 	}
 }
 
@@ -39,4 +31,15 @@ func ParsePeers(peerList string) []net.UDPAddr {
 	}
 
 	return addresses
+}
+
+// Timeout creates a clock that writes to the returned channel after the
+// time value given as argument
+func Timeout(timeout time.Duration) *chan bool {
+	c := make(chan bool)
+	go func() {
+		time.Sleep(timeout)
+		c <- true
+	}()
+	return &c
 }
