@@ -1,4 +1,4 @@
-package main
+package passtor
 
 import (
 	"net"
@@ -42,4 +42,13 @@ func Timeout(timeout time.Duration) *chan bool {
 		c <- true
 	}()
 	return &c
+}
+
+// XOR function computing the XOR distance between two hashes
+func XOR(hash0, hash1 Hash) Hash {
+	res := Hash{}
+	for i := range hash0[:] {
+		res[i] = hash0[i] ^ hash1[i]
+	}
+	return res
 }

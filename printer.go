@@ -1,16 +1,9 @@
-package main
+package passtor
 
 import (
 	"fmt"
-	"log"
 	"os"
 )
-
-// Printer of the passtor
-var printer = log.New(os.Stdout, "", 0)
-
-// Printer of the passtor
-var errPrinter = log.New(os.Stderr, "", 0)
 
 func checkErrMsg(err error, msg string) {
 	if err != nil {
@@ -20,18 +13,20 @@ func checkErrMsg(err error, msg string) {
 }
 
 // Print a message to stdout
-func Print(str string, V int) {
-	if V <= VERBOSE {
-		printer.Println(str)
+func (p *Printer) Print(str string, V int) {
+	if V <= p.Verbose {
+		p.Printer.Println(str)
 	}
 }
 
 // WPrint prints warnings
-func WPrint(str string) {
-	printer.Println("Warning: " + str)
+func (p *Printer) WPrint(str string, V int) {
+	if V <= p.Verbose {
+		p.Printer.Println("Warning: " + str)
+	}
 }
 
 // PrintErr prints error message to stderr
-func PrintErr(str string) {
-	errPrinter.Println(str)
+func (p *Printer) PrintErr(str string) {
+	p.ErrPrinter.Println(str)
 }

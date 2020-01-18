@@ -1,4 +1,4 @@
-package main
+package passtor
 
 import (
 	"flag"
@@ -23,9 +23,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	VERBOSE = *verbose
-
-	p := NewPasstor(*name, *addr)
+	p := NewPasstor(*name, *addr, *verbose)
 	go p.ListenToPasstors()
 
 	p.JoinDHT(ParsePeers(*peers))
@@ -34,6 +32,6 @@ func main() {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
-	Print("", V0)
+	p.Printer.Print("", V0)
 	os.Exit(0)
 }

@@ -1,13 +1,13 @@
-package main
+package passtor
 
 import (
-	"crypto/sha256"
+	"log"
 	"net"
 	"sync"
 )
 
 // Hash format of the sha256 hash function
-type Hash [sha256.Size]byte
+type Hash [SHASIZE]byte
 
 // NodeAddr node address entry in the k-bucket, node udp ip and port, and nodeID
 type NodeAddr struct {
@@ -23,6 +23,13 @@ type MessageCounter struct {
 	PendingMsg map[uint64]*chan Message // list of current pending messages
 }
 
+// Printer of the passtor, handles all prints to console
+type Printer struct {
+	Verbose    int
+	Printer    *log.Logger
+	ErrPrinter *log.Logger
+}
+
 // Passtor instance
 type Passtor struct {
 	Name   string // name of the passtor instance
@@ -36,6 +43,7 @@ type Passtor struct {
 	Addr    NodeAddr     // address used to communicate with other passtors
 	Buckets [][]NodeAddr // k-buckets used in the DHT
 
+	Printer Printer // passtor console printer
 }
 
 // Message structure defining messages exchanged between passtors

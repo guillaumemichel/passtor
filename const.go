@@ -1,6 +1,7 @@
-package main
+package passtor
 
 import (
+	"crypto/sha256"
 	"time"
 )
 
@@ -13,6 +14,8 @@ const (
 	MAXRETRIES = 4
 	// BUFFERSIZE size of the udp connection read buffer
 	BUFFERSIZE = 8192
+	// SHASIZE size of SHA256 hash in byte
+	SHASIZE = sha256.Size
 
 	// V0 verbose level 0
 	V0 = 0
@@ -21,6 +24,3 @@ const (
 	// V2 verbose level 2
 	V2 = 2
 )
-
-// VERBOSE level
-var VERBOSE = 1

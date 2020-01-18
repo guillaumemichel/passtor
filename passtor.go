@@ -1,16 +1,25 @@
-package main
+package passtor
 
 import (
+	"log"
 	"net"
+	"os"
 	"sync"
 )
 
 // NewPasstor creates and return a new Passtor instance
-func NewPasstor(name, addr string) Passtor {
+func NewPasstor(name, addr string, verbose int) Passtor {
 	udpAddr, err := net.ResolveUDPAddr("udp4", addr)
 	checkErr(err)
 	pConn, err := net.ListenUDP("udp4", udpAddr)
 	checkErr(err)
+
+	// create the passtor printers
+	printer := Printer{
+		Verbose:    verbose,
+		Printer:    log.New(os.Stdout, "", 0),
+		ErrPrinter: log.New(os.Stderr, "", 0),
+	}
 
 	// create the message counter used to associate reply with request
 	c := MessageCounter{
@@ -24,6 +33,7 @@ func NewPasstor(name, addr string) Passtor {
 		Name:     name,
 		Messages: c,
 		PConn:    pConn,
+		Printer:  printer,
 	}
 	// set the passtor identifier
 	p.SetIdentity()

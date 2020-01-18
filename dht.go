@@ -1,4 +1,4 @@
-package main
+package passtor
 
 import (
 	"fmt"
@@ -18,11 +18,13 @@ func (p *Passtor) JoinDHT(peers []net.UDPAddr) {
 	}
 	if !success || len(peers) == 0 {
 		if !success {
-			WPrint("could not join the DHT, bootstrap peers do not answer :(")
+			p.Printer.WPrint("could not join the DHT, bootstrap peers do "+
+				"not answer :(", V1)
 		}
-		Print("Creating new DHT", V1)
+		p.Printer.Print("Creating new DHT", V1)
 	} else {
-		Print("Joined successfully the DHT", V1)
+		p.LookupNode(p.NodeID)
+		p.Printer.Print("Joined successfully the DHT", V1)
 	}
 }
 
@@ -39,7 +41,7 @@ func (p *Passtor) BootstrapPeer(peer net.UDPAddr) bool {
 // AddPeerToBucket check if a peer should be added to the DHT, and if yes, add it
 // to the appropriate bucket
 func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
-	Print(fmt.Sprint("Adding", addr, "to k-bucket"), V2)
+	p.Printer.Print(fmt.Sprint("Adding", addr, "to k-bucket"), V2)
 }
 
 // CheckPeersAlive check if DHT peers are alive, and remove them from the
