@@ -43,7 +43,7 @@ func (p *Passtor) BootstrapPeer(peer net.UDPAddr) bool {
 func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 	dist := XOR(p.NodeID, addr.NodeID)
 
-	bucket := 0
+	var bucket uint
 	done := false
 	for _, b := range dist {
 		for i := BYTELENGTH - 1; i >= 0; i-- {
@@ -58,8 +58,20 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 		}
 		bucket += 8
 	}
-	fmt.Println(bucket)
-	p.Printer.Print(fmt.Sprint("Adding", addr, "to k-bucket"), V2)
+	if _, ok := p.Buckets[bucket]; !ok {
+		p.Buckets[bucket] = &Bucket{
+			Size: 0,
+			Tail: nil,
+			Head: nil,
+		}
+	}
+	b := p.Buckets[bucket]
+	if b.Size < DHTK {
+		b.Insert(&addr)
+		p.Printer.Print(fmt.Sprint("Added ", addr, " to bucket ", bucket), V2)
+	} else {
+		p.Printer.Print("Bucket full", V2)
+	}
 }
 
 // CheckPeersAlive check if DHT peers are alive, and remove them from the
@@ -74,33 +86,59 @@ func (p *Passtor) LookupNode(nodeID Hash) {
 }
 
 // Insert a new NodeAddress in the Bucket, called only if bucket not full
-func (b *Bucket) Insert(nodeAddr NodeAddr) {
+func (b *Bucket) Insert(nodeAddr *NodeAddr) {
 	if b.Size >= DHTK {
 		fmt.Println("Warning: cannot insert node to full bucket!")
 		return
 	}
-	b.Size++
 	new := BucketElement{
-		NodeAddr: &nodeAddr,
+		NodeAddr: nodeAddr,
 		Next:     b.Tail,
+		Prev:     nil,
+	}
+	if b.Size == 0 {
+		b.Head = &new
+	} else {
+		b.Tail.Prev = &new
 	}
 	b.Tail = &new
+	b.Size++
 }
 
-// Replace the tail of the list by the new Node Address
-func (b *Bucket) Replace(nodeAddr NodeAddr) {
-	new := BucketElement{
-		NodeAddr: &nodeAddr,
-		Next:     b.Tail.Next,
+// Find and return the element corresponding to the given address, returns nil
+// if not found
+func (b *Bucket) Find(nodeAddr *NodeAddr) *BucketElement {
+	el := b.Tail
+	for el != nil {
+		if el.NodeAddr.NodeID == nodeAddr.NodeID {
+			return el
+		}
+		el = el.Next
 	}
-	b.Tail = &new
+	return nil
 }
 
-// MoveTailToHead moves the tail element of the list to the head
-func (b *Bucket) MoveTailToHead() {
-	newHead := b.Tail
-	b.Tail = b.Tail.Next
-	newHead.Next = nil
-	b.Head.Next = newHead
-	b.Head = newHead
+// Replace the a node address in the list by a new one
+func (b *Bucket) Replace(old *BucketElement, new *NodeAddr) {
+	if b.Size == 0 {
+		fmt.Println("Warning: no element to replace in bucket")
+	}
+	old.NodeAddr = new
+}
+
+// MoveToHead moves an element of the list to the head
+func (b *Bucket) MoveToHead(el *BucketElement) {
+	if el != b.Head {
+		el.Next.Prev = el.Prev
+
+		if el != b.Tail {
+			el.Prev.Next = el.Next
+		} else {
+			b.Tail = el.Next
+		}
+		b.Head.Next = el
+		el.Prev = b.Head
+		el.Next = nil
+		b.Head = el
+	}
 }

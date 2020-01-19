@@ -40,8 +40,8 @@ type Passtor struct {
 
 	Messages MessageCounter // handles message id and pending messages
 
-	Addr    NodeAddr          // address used to communicate with passtors
-	Buckets map[uint64]Bucket // k-buckets used in the DHT
+	Addr    NodeAddr         // address used to communicate with passtors
+	Buckets map[uint]*Bucket // k-buckets used in the DHT
 
 	Printer Printer // passtor console printer
 }
@@ -65,4 +65,5 @@ type Bucket struct {
 type BucketElement struct {
 	NodeAddr *NodeAddr
 	Next     *BucketElement
+	Prev     *BucketElement
 }

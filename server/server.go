@@ -1,4 +1,4 @@
-package passtor
+package main
 
 import (
 	"flag"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"gitlab.gnugen.ch/gmichel/passtor"
 )
 
 func main() {
@@ -23,15 +25,15 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	p := NewPasstor(*name, *addr, *verbose)
+	p := passtor.NewPasstor(*name, *addr, *verbose)
 	go p.ListenToPasstors()
 
-	p.JoinDHT(ParsePeers(*peers))
+	p.JoinDHT(passtor.ParsePeers(*peers))
 
 	// keep the program active until ctrl+c is pressed
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
-	p.Printer.Print("", V0)
+	p.Printer.Print("", passtor.V0)
 	os.Exit(0)
 }
