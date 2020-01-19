@@ -34,7 +34,7 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 		Messages: c,
 		PConn:    pConn,
 		Printer:  printer,
-		Buckets:  make(map[uint]*Bucket),
+		Buckets:  make(map[uint16]*Bucket),
 	}
 	// set the passtor identifier
 	p.SetIdentity()

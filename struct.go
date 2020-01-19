@@ -40,25 +40,28 @@ type Passtor struct {
 
 	Messages MessageCounter // handles message id and pending messages
 
-	Addr    NodeAddr         // address used to communicate with passtors
-	Buckets map[uint]*Bucket // k-buckets used in the DHT
+	Addr    NodeAddr           // address used to communicate with passtors
+	Buckets map[uint16]*Bucket // k-buckets used in the DHT
 
 	Printer Printer // passtor console printer
 }
 
 // Message structure defining messages exchanged between passtors
 type Message struct {
-	ID     uint64    // message ID
-	Reply  bool      // message is a reply
-	Sender *NodeAddr // sender identity
-	Ping   *bool     // non nil if message is a ping message
+	ID        uint64      // message ID
+	Reply     bool        // message is a reply
+	Sender    *NodeAddr   // sender identity
+	Ping      *bool       // non nil if message is a ping message
+	LookupReq *Hash       // value to lookup
+	LookupRep *[]NodeAddr // lookup response
 }
 
 // Bucket structure representing Kademlia k-buckets
 type Bucket struct {
-	Head *BucketElement
-	Tail *BucketElement
-	Size uint
+	Mutex *sync.Mutex
+	Head  *BucketElement
+	Tail  *BucketElement
+	Size  uint
 }
 
 // BucketElement represent individual elements of the k-buckets
@@ -66,4 +69,11 @@ type BucketElement struct {
 	NodeAddr *NodeAddr
 	Next     *BucketElement
 	Prev     *BucketElement
+}
+
+// LookupStatus type used by the lookup RPC
+type LookupStatus struct {
+	NodeAddr NodeAddr
+	Tested   bool
+	Failed   bool
 }

@@ -2,12 +2,15 @@ package passtor
 
 import (
 	"crypto/sha256"
+	"math"
 	"time"
 )
 
 const (
 	// DHTK K parameter for DHT K-buckets
 	DHTK = 5
+	// ALPHA DHT concurrency parameter
+	ALPHA = 2
 	// TIMEOUT value when waiting for an answer
 	TIMEOUT = 2 * time.Second
 	// MINRETRIES min number of attemps before giving up reaching an host
@@ -19,7 +22,7 @@ const (
 	// SHASIZE size of SHA256 hash in byte
 	SHASIZE = sha256.Size
 	// BYTELENGTH number of bits in a byte
-	BYTELENGTH uint = 8
+	BYTELENGTH uint16 = 8
 
 	// V0 verbose level 0 (no output)
 	V0 = 0
@@ -30,3 +33,14 @@ const (
 	// V3 verbose level 3 (mode verbose++)
 	V3 = 3
 )
+
+// MAXDISTANCE maximum distance between two hashes
+var MAXDISTANCE Hash
+
+func init() {
+	// set MAXDISTANCE
+	b := byte(math.MaxUint8)
+	for i := range MAXDISTANCE {
+		MAXDISTANCE[i] = b
+	}
+}

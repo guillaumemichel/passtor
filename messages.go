@@ -78,9 +78,12 @@ func (p *Passtor) HandleMessage(protobufed []byte) {
 	}
 
 	if rep.Ping != nil {
-		//bootstrap message
+		//ping message
 		rep.Reply = true
 		p.SendMessage(rep, rep.Sender.Addr, MINRETRIES)
+	} else if rep.LookupReq != nil {
+		// reply to lookup
+		p.LookupRep(&rep)
 	}
 }
 
