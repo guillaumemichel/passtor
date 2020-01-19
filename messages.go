@@ -8,7 +8,8 @@ import (
 
 // SendMessage send the given message to the remote peer over udp
 // returns the reply message once it has arrived
-func (p *Passtor) SendMessage(msg Message, dst net.UDPAddr) *Message {
+func (p *Passtor) SendMessage(msg Message, dst net.UDPAddr,
+	retries int) *Message {
 
 	msg.Sender = &p.Addr
 
@@ -35,8 +36,8 @@ func (p *Passtor) SendMessage(msg Message, dst net.UDPAddr) *Message {
 		bytes, err := protobuf.Encode(&msg)
 		checkErr(err)
 
-		// tries to send a message up to MAXRETRIES times
-		for i := 0; i < MAXRETRIES; i++ {
+		// tries to send a message up to retries times
+		for i := 0; i < retries; i++ {
 			// send the message
 			_, err = p.PConn.WriteTo(bytes, &dst)
 			checkErr(err)
@@ -76,10 +77,10 @@ func (p *Passtor) HandleMessage(protobufed []byte) {
 		return
 	}
 
-	if rep.Bootstrap != nil {
+	if rep.Ping != nil {
 		//bootstrap message
 		rep.Reply = true
-		p.SendMessage(rep, rep.Sender.Addr)
+		p.SendMessage(rep, rep.Sender.Addr, MINRETRIES)
 	}
 }
 

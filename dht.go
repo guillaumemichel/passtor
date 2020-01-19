@@ -33,9 +33,13 @@ func (p *Passtor) JoinDHT(peers []net.UDPAddr) {
 func (p *Passtor) BootstrapPeer(peer net.UDPAddr) bool {
 	// define bootstrap message
 	b := true
-	msg := Message{Bootstrap: &b}
+	msg := Message{Ping: &b}
 	// send it, this function returns once the reply is received
-	return p.SendMessage(msg, peer) != nil
+	return p.SendMessage(msg, peer, MAXRETRIES) != nil
+}
+
+func (p *Passtor) Ping(peer net.UDPAddr, retries int) bool {
+	return true
 }
 
 // AddPeerToBucket check if a peer should be added to the DHT, and if yes,
@@ -43,6 +47,7 @@ func (p *Passtor) BootstrapPeer(peer net.UDPAddr) bool {
 func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 	dist := XOR(p.NodeID, addr.NodeID)
 
+	// find in which bucket addr belongs
 	var bucket uint
 	done := false
 	for _, b := range dist {
@@ -58,6 +63,7 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 		}
 		bucket += 8
 	}
+	// if bucket does not exist yet, create it
 	if _, ok := p.Buckets[bucket]; !ok {
 		p.Buckets[bucket] = &Bucket{
 			Size: 0,
@@ -65,11 +71,17 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 			Head: nil,
 		}
 	}
+	// get the coresponding bucket
 	b := p.Buckets[bucket]
-	if b.Size < DHTK {
+	if el := b.Find(&addr); el != nil {
+		// element already in bucket, moving it to head
+		b.MoveToHead(el)
+	} else if b.Size < DHTK {
+		// element not in bucket && bucket not full, adding el to bucket
 		b.Insert(&addr)
 		p.Printer.Print(fmt.Sprint("Added ", addr, " to bucket ", bucket), V2)
 	} else {
+		//
 		p.Printer.Print("Bucket full", V2)
 	}
 }
