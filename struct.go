@@ -48,10 +48,10 @@ type Passtor struct {
 
 // Message structure defining messages exchanged between passtors
 type Message struct {
-	ID        uint64    // message ID
-	Reply     bool      // message is a reply
-	Sender    *NodeAddr // sender identity
-	Bootstrap *bool     // non nil if message is a bootstrap message
+	ID     uint64    // message ID
+	Reply  bool      // message is a reply
+	Sender *NodeAddr // sender identity
+	Ping   *bool     // non nil if message is a ping message
 }
 
 // Bucket structure representing Kademlia k-buckets
