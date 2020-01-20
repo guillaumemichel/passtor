@@ -1,6 +1,7 @@
 package passtor
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -39,6 +40,7 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 	// set the passtor identifier
 	p.SetIdentity()
 	p.Addr = NodeAddr{Addr: *udpAddr, NodeID: p.NodeID}
+	p.Printer.Print(fmt.Sprint("NodeID: ", p.NodeID), V3)
 	return p
 }
 
