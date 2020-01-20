@@ -102,52 +102,74 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 	// set initial lookup peers
 	initial := p.GetKCloser(hash)
 	statuses := make([]*LookupStatus, len(initial))
+	m := sync.Mutex{}
 	for i, na := range initial {
 		statuses[i] = NewLookupStatus(na)
 	}
-	// TODO concurrency with concurrency parameter ALPHA
-	found := true
-	for found {
-		found = false
-		// if all values are already looked up, found = false -> exit loop
-		for _, s := range statuses {
-			if !s.Tested {
-				// lookup at that node
-				found = true
-				msg := Message{LookupReq: hash}
-				reply := p.SendMessage(msg, s.NodeAddr.Addr, MINRETRIES)
-				// now we tested this node
-				s.Tested = true
-				if reply == nil {
-					s.Failed = true
-				} else {
-					// update statuses with new results
-					for _, n := range *reply.LookupRep {
-						// if peer not in statuses yet, insert it
-						alreadyIn := false
-						for _, s := range statuses {
-							if s.NodeAddr.NodeID.Compare(n.NodeID) == 0 {
-								// already in list
-								alreadyIn = true
-								break
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < ALPHA; i++ {
+		// ALPHA parallel requests iterating on the statuses
+		go func() {
+			wg.Add(1)
+			found := true
+			for found {
+				found = false
+				// if all values are already looked up, found = false -> exit loop
+				for _, s := range statuses {
+					m.Lock()
+					if !s.Tested {
+						// lookup at that node
+						s.Tested = true
+						m.Unlock()
+						found = true
+						msg := Message{LookupReq: hash}
+						reply := p.SendMessage(msg, s.NodeAddr.Addr, MINRETRIES)
+						// now we tested this node
+						if reply == nil {
+							s.Failed = true
+						} else {
+							// update statuses with new results
+							for _, n := range *reply.LookupRep {
+								// if peer not in statuses yet, insert it
+								alreadyIn := false
+								m.Lock()
+								for _, s := range statuses {
+									if s.NodeAddr.NodeID.Compare(n.NodeID) == 0 {
+										// already in list
+										alreadyIn = true
+										break
+									}
+								}
+								m.Unlock()
+								if !alreadyIn && p.NodeID.Compare(n.NodeID) != 0 {
+									// if not in list, add it
+									m.Lock()
+									statuses = append(statuses, NewLookupStatus(n))
+									m.Unlock()
+								}
 							}
 						}
-						if !alreadyIn && p.NodeID.Compare(n.NodeID) != 0 {
-							// if not in list, add it
-							statuses = append(statuses, NewLookupStatus(n))
-						}
+					} else {
+						m.Unlock()
 					}
 				}
 			}
-		}
+			wg.Done()
+		}()
 	}
+	// waiting for the ALPHA threads to finish
+	wg.Wait()
 	// get the K closest nodes
 
 	// sort the array with id closest to target first
 	sort.Slice(statuses, func(i, j int) bool {
-		// dist(i, target) < dist(j, target)
-		return statuses[i].NodeAddr.NodeID.XOR(*hash).Compare(
-			statuses[j].NodeAddr.NodeID.XOR(*hash)) < 0
+		// (!fail[i] && fail[j]) ||
+		//        (fail[i]==fail[j] && (dist(i, target) < dist(j, target)))
+		return (!statuses[i].Failed && statuses[j].Failed) &&
+			(statuses[i].Failed == statuses[j].Failed &&
+				statuses[i].NodeAddr.NodeID.XOR(*hash).Compare(
+					statuses[j].NodeAddr.NodeID.XOR(*hash)) < 0)
 	})
 	// number of elements to return
 	n := DHTK
@@ -213,17 +235,17 @@ func (b *Bucket) Insert(nodeAddr *NodeAddr) {
 		b.Mutex.Unlock()
 		return
 	}
-	new := BucketElement{
+	newE := BucketElement{
 		NodeAddr: nodeAddr,
 		Next:     b.Tail,
 		Prev:     nil,
 	}
 	if b.Size == 0 {
-		b.Head = &new
+		b.Head = &newE
 	} else {
-		b.Tail.Prev = &new
+		b.Tail.Prev = &newE
 	}
-	b.Tail = &new
+	b.Tail = &newE
 	b.Size++
 	b.Mutex.Unlock()
 }

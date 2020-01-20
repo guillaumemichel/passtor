@@ -1,7 +1,6 @@
 package passtor
 
 import (
-	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -57,10 +56,6 @@ func (hash0 Hash) XOR(hash1 Hash) Hash {
 // Compare two hashes, returns 1 if first hash smaller than the second, -1 if
 // the second is smaller than the first, and 0 if they are equal
 func (hash0 Hash) Compare(hash1 Hash) int {
-	if len(hash0) != len(hash1) {
-		fmt.Println("Cannot compare hashes of different sizes")
-		return 0
-	}
 	for i := 0; i < len(hash0); i++ {
 		if hash0[i] < hash1[i] {
 			return -1
