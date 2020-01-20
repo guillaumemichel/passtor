@@ -94,6 +94,7 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 			b.Replace(b.Tail, &addr)
 		}
 	}
+	p.PrintBuckets()
 }
 
 // LookupReq lookup a hash

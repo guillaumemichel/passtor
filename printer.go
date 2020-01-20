@@ -30,3 +30,18 @@ func (p *Printer) WPrint(str string, V int) {
 func (p *Printer) PrintErr(str string) {
 	p.ErrPrinter.Println(str)
 }
+
+// PrintBuckets print all bucket with their state
+func (p *Passtor) PrintBuckets() {
+	str := "----------\nPrinting Bucket\n----------\n"
+	for i, b := range p.Buckets {
+		str += fmt.Sprintln("Bucket", i, ":")
+		list := b.GetList()
+		for _, n := range list {
+			str += fmt.Sprintln(p.NodeID.XOR(n.NodeID), n.NodeID, n.Addr)
+		}
+		str += "\n"
+	}
+	str += "----------"
+	p.Printer.Print(str, V3)
+}
