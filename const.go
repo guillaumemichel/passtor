@@ -2,10 +2,11 @@ package passtor
 
 import (
 	"crypto/ed25519"
-	"crypto/sha256"
 	"golang.org/x/crypto/chacha20poly1305"
 	"math"
 	"time"
+
+	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 const (
@@ -21,8 +22,6 @@ const (
 	MAXRETRIES = 4
 	// BUFFERSIZE size of the udp connection read buffer
 	BUFFERSIZE = 8192
-	// SHASIZE size of SHA256 hash in byte
-	SHASIZE = sha256.Size // TODO: change to SHA-3, change in crypto as well
 	// BYTELENGTH number of bits in a byte
 	BYTELENGTH uint16 = 8
 
@@ -44,7 +43,7 @@ const (
 )
 
 // MAXDISTANCE maximum distance between two hashes
-var MAXDISTANCE Hash
+var MAXDISTANCE crypto.Hash
 
 func init() {
 	// set MAXDISTANCE

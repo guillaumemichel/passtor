@@ -1,14 +1,12 @@
 package passtor
 
 import (
+	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 	"golang.org/x/crypto/ed25519"
 	"log"
 	"net"
 	"sync"
 )
-
-// Hash format of the sha256 hash function
-type Hash [SHASIZE]byte
 
 // Nonce format for encryption
 type Nonce [NONCESIZE]byte
@@ -31,7 +29,7 @@ type EncryptedData []byte
 // NodeAddr node address entry in the k-bucket, node udp ip and port, and nodeID
 type NodeAddr struct {
 	Addr   net.UDPAddr // udp address (ip + port) of the node
-	NodeID Hash        // nodeID of that node
+	NodeID crypto.Hash // nodeID of that node
 }
 
 // MessageCounter structure containing message indexing tools
@@ -51,8 +49,8 @@ type Printer struct {
 
 // Passtor instance
 type Passtor struct {
-	Name   string // name of the passtor instance
-	NodeID Hash   // hash of the name of the passtor, node identifier
+	Name   string      // name of the passtor instance
+	NodeID crypto.Hash // hash of the name of the passtor, node identifier
 
 	PConn *net.UDPConn // udp socket to communicate with other passtors
 	CConn *net.UDPConn // udp socket to communicate with clients
@@ -67,12 +65,12 @@ type Passtor struct {
 
 // Message structure defining messages exchanged between passtors
 type Message struct {
-	ID        uint64      // message ID
-	Reply     bool        // message is a reply
-	Sender    *NodeAddr   // sender identity
-	Ping      *bool       // non nil if message is a ping message
-	LookupReq *Hash       // value to lookup
-	LookupRep *[]NodeAddr // lookup response
+	ID        uint64       // message ID
+	Reply     bool         // message is a reply
+	Sender    *NodeAddr    // sender identity
+	Ping      *bool        // non nil if message is a ping message
+	LookupReq *crypto.Hash // value to lookup
+	LookupRep *[]NodeAddr  // lookup response
 }
 
 // Bucket structure representing Kademlia k-buckets
@@ -111,7 +109,7 @@ type MetaData struct {
 
 // Login is a tuple of credentials and corresponding metadata to ensure validity.
 type Login struct {
-	ID          Hash
+	ID          crypto.Hash
 	Service     EncryptedData
 	Credentials Credentials
 	MetaData    MetaData
@@ -139,12 +137,12 @@ type AccountClient struct {
 
 // Account groups everything that has been stored by a single user.
 type Account struct {
-	ID Hash
+	ID crypto.Hash
 	Keys Keys
-	Data map[Hash]Login
+	Data map[crypto.Hash]Login
 	Version uint
 	Signature Signature
 }
 
 // Accounts is the collection of all created accounts.
-type Accounts map[Hash]Account
+type Accounts map[crypto.Hash]Account
