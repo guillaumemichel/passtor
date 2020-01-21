@@ -6,6 +6,8 @@ import (
 	"net"
 	"sort"
 	"sync"
+
+	. "./crypto"
 )
 
 // JoinDHT passtor join the DHT
