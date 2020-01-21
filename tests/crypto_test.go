@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"../crypto"
+	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
+
+// go test gitlab.gnugen.ch/gmichel/passtor/tests
 
 func getUser() (string, string) {
 	return "issou@epfl.ch", "super-strong-master-password"
@@ -13,33 +15,39 @@ func getUser() (string, string) {
 
 func TestGenerateReturnsKeysOfValidSize(t *testing.T) {
 
-	userID, masterPassword := getUser()
-	secret, _ := crypto.Secret(userID, masterPassword)
-	keys, _ := crypto.Generate(secret)
+	_, _, symmK, err := crypto.Generate()
 
-	if keys.SignPublicKey == nil {
+	var emptySymmK = crypto.SymmetricKey{}
+	if err != nil {
 		t.Fail()
 	}
-
-	if keys.EncryptedSignPrivateKey == nil {
-		t.Fail()
-	}
-
-	symmK, _ := crypto.Decrypt(keys.EncryptedSymmEncKey, crypto.BytesToSymmetricKey(secret))
-	if keys.EncryptedSymmEncKey == nil || len(symmK) != crypto.SYMMKEYLENGTH {
+	if symmK == emptySymmK {
 		t.Fail()
 	}
 }
 
 func TestDecryptionOfAnEncryptedMessageReturnsTheMessage(t *testing.T) {
+	_, _, symmK, _ := crypto.Generate()
 
-	key, _ := crypto.RandomBytes(crypto.SYMMKEYLENGTH)
 	msg, _ := crypto.RandomBytes(1024)
-	ciphertext, _ := crypto.Encrypt(msg, crypto.BytesToSymmetricKey(key))
 
-	plaintext, _ := crypto.Decrypt(ciphertext, crypto.BytesToSymmetricKey(key))
+	ciphertext, nonce, _ := crypto.Encrypt(msg, symmK)
+	plaintext, _ := crypto.Decrypt(ciphertext, nonce, symmK)
 
 	if bytes.Compare(msg, plaintext) != 0 {
+		t.Fail()
+	}
+}
+
+func TestVerifyOfASignatureReturnsCorrect(t *testing.T) {
+	pk, sk, _, _ := crypto.Generate()
+
+	msg, _ := crypto.RandomBytes(1024)
+
+	sig := crypto.Sign(msg, sk)
+	correct := crypto.Verify(msg, sig, pk)
+
+	if !correct {
 		t.Fail()
 	}
 }

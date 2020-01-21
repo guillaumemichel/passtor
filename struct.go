@@ -2,29 +2,10 @@ package passtor
 
 import (
 	"gitlab.gnugen.ch/gmichel/passtor/crypto"
-	"golang.org/x/crypto/ed25519"
 	"log"
 	"net"
 	"sync"
 )
-
-// Nonce format for encryption
-type Nonce [NONCESIZE]byte
-
-// Signature format
-type Signature [SIGNATURESIZE]byte
-
-// SymmetricKey format
-type SymmetricKey [SYMMKEYSIZE]byte
-
-// PublicKey type
-type PublicKey ed25519.PublicKey
-
-// PrivateKey type
-type PrivateKey ed25519.PrivateKey
-
-// EncryptedData generic format
-type EncryptedData []byte
 
 // NodeAddr node address entry in the k-bucket, node udp ip and port, and nodeID
 type NodeAddr struct {
@@ -95,38 +76,41 @@ type LookupStatus struct {
 	Failed   bool
 }
 
-// Credentials for a given service.
-type Credentials struct {
-	Username EncryptedData
-	Password EncryptedData
+// MetaData for the Login structure.
+type MetaData struct {
+	ServiceNonce crypto.Nonce
+	UsernameNonce crypto.Nonce
+	PasswordNonce crypto.Nonce
+	PrivateKeySeedNonce crypto.Nonce
+	SymmetricKeyNonce crypto.Nonce
 }
 
-// MetaData for credentials.
-type MetaData struct {
-	UsernameNonce Nonce
-	PasswordNonce Nonce
+// Credentials for a given service.
+type Credentials struct {
+	Username crypto.EncryptedData
+	Password crypto.EncryptedData
 }
 
 // Login is a tuple of credentials and corresponding metadata to ensure validity.
 type Login struct {
 	ID          crypto.Hash
-	Service     EncryptedData
+	Service     crypto.EncryptedData
 	Credentials Credentials
 	MetaData    MetaData
 }
 
 // KeysClient used only client side to store the keys used to sign or en/de-crypt data.
 type KeysClient struct {
-	PublicKey PublicKey
-	PrivateKey PrivateKey
-	SymmetricKey SymmetricKey
+	PublicKey crypto.PublicKey
+	PrivateKey crypto.PrivateKey
+	SymmetricKey crypto.SymmetricKey
 }
 
 // Keys used to encrypt, or sign data.
 type Keys struct {
-	PublicKey PublicKey
-	PrivateKeySeed EncryptedData
-	SymmetricKey EncryptedData
+	PublicKey crypto.PublicKey
+	PrivateKeySeed crypto.EncryptedData
+	SymmetricKey crypto.EncryptedData
 }
 
 // Account used only client side to store info about the current user.
@@ -141,7 +125,7 @@ type Account struct {
 	Keys Keys
 	Data map[crypto.Hash]Login
 	Version uint
-	Signature Signature
+	Signature crypto.Signature
 }
 
 // Accounts is the collection of all created accounts.

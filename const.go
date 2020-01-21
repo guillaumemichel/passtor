@@ -1,8 +1,6 @@
 package passtor
 
 import (
-	"crypto/ed25519"
-	"golang.org/x/crypto/chacha20poly1305"
 	"math"
 	"time"
 
@@ -24,13 +22,6 @@ const (
 	BUFFERSIZE = 8192
 	// BYTELENGTH number of bits in a byte
 	BYTELENGTH uint16 = 8
-
-	// SYMMKEYSIZE size in bytes for a symmetric key
-	SYMMKEYSIZE = chacha20poly1305.KeySize
-	// NONCESIZE size in bytes for a nonce
-	NONCESIZE = chacha20poly1305.NonceSizeX
-	// SIGNATURESIZE size in bytes for a signature
-	SIGNATURESIZE = ed25519.SignatureSize
 
 	// V0 verbose level 0 (no output)
 	V0 = 0

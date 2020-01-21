@@ -1,19 +1,18 @@
 package crypto
 
 import (
-	"crypto/sha256"
-	"fmt"
+	"golang.org/x/crypto/sha3"
 )
 
 // HASHSIZE size of a hash in byte
-const HASHSIZE = sha256.Size // TODO: change to SHA-3
+const HASHSIZE = 64
 
 // Hash is a flexible type to handle hashes
 type Hash [HASHSIZE]byte
 
 // H hashes the given string value
-func H(str string) Hash {
-	return sha256.Sum256([]byte(str)) // TODO: change to SHA-3
+func H(data []byte) Hash {
+	return sha3.Sum512(data)
 }
 
 // XOR function computing the XOR distance between two hashes
@@ -28,10 +27,6 @@ func (hash0 Hash) XOR(hash1 Hash) Hash {
 // Compare two hashes, returns 1 if first hash smaller than the second, -1 if
 // the second is smaller than the first, and 0 if they are equal
 func (hash0 Hash) Compare(hash1 Hash) int {
-	if len(hash0) != len(hash1) {
-		fmt.Println("Cannot compare hashes of different sizes")
-		return 0
-	}
 	for i := 0; i < len(hash0); i++ {
 		if hash0[i] < hash1[i] {
 			return -1

@@ -1,61 +1,45 @@
 package crypto
 
 import (
+	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/ed25519"
 )
 
-// SYMMKEYLENGTH is the length of the symmetric encryption/decryption key
-const SYMMKEYLENGTH = 32
+const (
+	// SYMMKEYSIZE size in bytes for a symmetric key
+	SYMMKEYSIZE = chacha20poly1305.KeySize
+)
 
-// SymmetricKey is a special type to designate symmetric encryption/decryption keys
-type SymmetricKey [SYMMKEYLENGTH]byte
+// PublicKey type
+type PublicKey = ed25519.PublicKey
 
-// Keys stores the keys belonging to a user
-type Keys struct {
-	SignPublicKey           ed25519.PublicKey  // public key to verifiy requests
-	EncryptedSignPrivateKey ed25519.PrivateKey // private key to sign requests (encrypted under user's secret)
-	EncryptedSymmEncKey     []byte             // symmetric encryption key (encrypted under user's secret)
-}
+// PrivateKey type
+type PrivateKey = ed25519.PrivateKey
 
-func generateSymmetricKey(size uint32) (*SymmetricKey, error) {
+// SymmetricKey format
+type SymmetricKey [SYMMKEYSIZE]byte
 
-	key, err := RandomBytes(SYMMKEYLENGTH)
+func generateSymmetricKey() (SymmetricKey, error) {
+	key, err := RandomBytes(SYMMKEYSIZE)
 	if err != nil {
-		return nil, err
+		return SymmetricKey{}, err
 	}
 
 	symmK := BytesToSymmetricKey(key)
-	return &symmK, nil
+	return symmK, nil
 
 }
 
-// Generate generates a triplet of keys needed to the user to encrypt/decrypt, sign and verify data
-func Generate(secret UserSecret) (*Keys, error) {
-
-	signPublicK, signPrivK, err := ed25519.GenerateKey(nil)
+func Generate() (PublicKey, PrivateKey, SymmetricKey, error) {
+	pk, sk, err := ed25519.GenerateKey(nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, SymmetricKey{}, err
 	}
 
-	symmK, err := generateSymmetricKey(SYMMKEYLENGTH)
+	symmKey, err := generateSymmetricKey()
 	if err != nil {
-		return nil, err
+		return nil, nil, SymmetricKey{}, err
 	}
 
-	encryptedSignPrivK, err := Encrypt(signPrivK, BytesToSymmetricKey(secret))
-	if err != nil {
-		return nil, err
-	}
-
-	encryptedSymmK, err := Encrypt(SymmetricKeyToBytes(*symmK), BytesToSymmetricKey(secret))
-	if err != nil {
-		return nil, err
-	}
-
-	return &Keys{
-		SignPublicKey:           signPublicK,
-		EncryptedSignPrivateKey: encryptedSignPrivK,
-		EncryptedSymmEncKey:     encryptedSymmK,
-	}, nil
-
+	return pk, sk, symmKey, nil
 }

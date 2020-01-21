@@ -17,23 +17,22 @@ const (
 	// ARGONPARALELLISM is the number of cores to be used by Argon2
 	ARGONPARALELLISM = 2
 
-	// ARGONKEYLENGTH is the length of the key produced by Argon2
-	ARGONKEYLENGTH = 32
+	// SECRETLENGTH is the length of the key produced by Argon2
+	SECRETLENGTH = SYMMKEYSIZE
 )
 
-// UserSecret is the secret used by the user to locally decrypt its symmetric key K and private key pk
-type UserSecret []byte
+// Secret is the secret used by the user to locally decrypt its symmetric key K and secret key sk
+type Secret [SECRETLENGTH]byte
 
 // Secret generates a secret for the given user
-func Secret(userID, masterPassword string) (UserSecret, error) {
-
-	return argon2.Key(
+func GetSecret(userID, masterPassword string) Secret {
+	return KDFToSecret(argon2.Key(
 		[]byte(userID+masterPassword),
 		generateSalt(SALTLENGTH),
 		ARGONITERATIONS, ARGONMEMORY,
 		ARGONPARALELLISM,
-		ARGONKEYLENGTH,
-	), nil
+		SECRETLENGTH,
+	))
 }
 
 // generateSalt generates a default salt
