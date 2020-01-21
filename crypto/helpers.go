@@ -35,8 +35,8 @@ func SymmetricKeyToBytes(symmK SymmetricKey) []byte {
 
 	array := make([]byte, len(symmK))
 
-	for _, b := range symmK {
-		array = append(array, b)
+	for i, b := range symmK {
+		array[i] = b
 	}
 
 	return array

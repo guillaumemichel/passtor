@@ -1,6 +1,8 @@
 package crypto
 
-import "golang.org/x/crypto/chacha20poly1305"
+import (
+	"golang.org/x/crypto/chacha20poly1305"
+)
 
 // Encrypt encrypts the given data under the given key using ChaCha20 stream cipher
 func Encrypt(data []byte, key SymmetricKey) ([]byte, error) {

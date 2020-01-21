@@ -5,7 +5,7 @@ import (
 )
 
 // SYMMKEYLENGTH is the length of the symmetric encryption/decryption key
-const SYMMKEYLENGTH = 64
+const SYMMKEYLENGTH = 32
 
 // SymmetricKey is a special type to designate symmetric encryption/decryption keys
 type SymmetricKey [SYMMKEYLENGTH]byte
@@ -14,7 +14,7 @@ type SymmetricKey [SYMMKEYLENGTH]byte
 type Keys struct {
 	SignPublicKey           ed25519.PublicKey  // public key to verifiy requests
 	EncryptedSignPrivateKey ed25519.PrivateKey // private key to sign requests (encrypted under user's secret)
-	EncryptedSymmEncKey     *SymmetricKey      // symmetric encryption key (encrypted under user's secret)
+	EncryptedSymmEncKey     []byte             // symmetric encryption key (encrypted under user's secret)
 }
 
 func generateSymmetricKey(size uint32) (*SymmetricKey, error) {
@@ -42,10 +42,20 @@ func Generate(secret UserSecret) (*Keys, error) {
 		return nil, err
 	}
 
+	encryptedSignPrivK, err := Encrypt(signPrivK, BytesToSymmetricKey(secret))
+	if err != nil {
+		return nil, err
+	}
+
+	encryptedSymmK, err := Encrypt(SymmetricKeyToBytes(*symmK), BytesToSymmetricKey(secret))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Keys{
 		SignPublicKey:           signPublicK,
-		EncryptedSignPrivateKey: signPrivK,
-		EncryptedSymmEncKey:     symmK,
+		EncryptedSignPrivateKey: encryptedSignPrivK,
+		EncryptedSymmEncKey:     encryptedSymmK,
 	}, nil
 
 }
