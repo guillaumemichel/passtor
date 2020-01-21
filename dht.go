@@ -193,7 +193,6 @@ func (p *Passtor) LookupRep(req Message) {
 	KCloser := p.GetKCloser(req.LookupReq)
 
 	req.LookupReq = nil
-	req.Reply = true
 	req.LookupRep = &KCloser
 	p.SendMessage(req, req.Sender.Addr, MINRETRIES)
 }
@@ -205,7 +204,6 @@ func (p *Passtor) HandleAllocation(msg Message) {
 
 	msg.AllocationReq = nil
 	msg.AllocationRep = &rep
-	msg.Reply = true
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
 
@@ -214,12 +212,11 @@ func (p *Passtor) HandleAllocation(msg Message) {
 func (p *Passtor) AllocateToPeer(id crypto.Hash, peer NodeAddr, index, repl uint32,
 	data Datastructure) bool {
 
-	allocate := AllocateMessage{
+	msg := Message{AllocationReq: &AllocateMessage{
 		Data:  data,
 		Repl:  repl,
 		Index: index,
-	}
-	msg := Message{AllocationReq: &allocate}
+	}}
 	rep := p.SendMessage(msg, peer.Addr, MINRETRIES)
 	return !(rep == nil) && rep.AllocationRep != nil &&
 		*rep.AllocationRep == NOERROR
@@ -266,6 +263,65 @@ func (p *Passtor) Allocate(id crypto.Hash, repl uint32, data Datastructure) []No
 	wg.Wait()
 	p.Printer.Print(fmt.Sprint("Allocated at:", allocations), V2)
 	return allocations
+}
+
+// HandleFetch searches for requested file, send it if it finds it
+func (p *Passtor) HandleFetch(msg Message) {
+	// TODO look for the data
+	// msg.FetchRep = nil if data not found
+
+	data := Datastructure{MyData: "hi there"}
+
+	// writing reply
+	msg.FetchReq = nil
+	msg.FetchRep = &data
+	// sending reply
+	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
+}
+
+// FetchDataFromPeer send fetch request to given peer, returns the reply of the
+// remote host
+func (p *Passtor) FetchDataFromPeer(h *crypto.Hash, peer NodeAddr) *Message {
+	return p.SendMessage(Message{FetchReq: h}, peer.Addr, MINRETRIES)
+}
+
+// FetchData request associated with given hash from the DHT
+func (p *Passtor) FetchData(h *crypto.Hash) *Datastructure {
+	peers := p.LookupReq(h)
+
+	count := 0
+	done := false
+	var data Datastructure
+	m := sync.Mutex{}
+
+	for i := 0; i < REPL; i++ {
+		go func() {
+			m.Lock()
+			for !done && count < len(peers) {
+				peer := peers[count]
+				count++
+				m.Unlock()
+				if rep := p.FetchDataFromPeer(h, peer); rep != nil {
+					if d := rep.FetchRep; d != nil {
+						m.Lock()
+						if !done {
+							// TODO check that data.repl <= REPL
+							done = true
+							data = *d
+						}
+						break
+					}
+				}
+
+				m.Lock()
+			}
+			m.Unlock()
+		}()
+	}
+	if !done {
+		return nil
+	}
+	return &data
 }
 
 // GetKCloser get the K closer nodes to given hash

@@ -55,6 +55,8 @@ type Message struct {
 	LookupRep     *[]NodeAddr  // lookup response
 	AllocationReq *AllocateMessage
 	AllocationRep *string
+	FetchReq      *crypto.Hash
+	FetchRep      *Datastructure
 }
 
 // Bucket structure representing Kademlia k-buckets
