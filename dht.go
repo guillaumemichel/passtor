@@ -5,6 +5,8 @@ import (
 	"net"
 	"sort"
 	"sync"
+
+	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 // JoinDHT passtor join the DHT
@@ -39,9 +41,9 @@ func (p *Passtor) Ping(peer net.UDPAddr, retries int) bool {
 }
 
 // GetBucketID get the bucket identifier in which val belongs
-func (p *Passtor) GetBucketID(val *Hash) uint16 {
+func (p *Passtor) GetBucketID(val *crypto.Hash) uint16 {
 	if p.NodeID.Compare(*val) == 0 {
-		return SHASIZE
+		return crypto.HASHSIZE
 	}
 	dist := p.NodeID.XOR(*val)
 
@@ -97,7 +99,7 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 }
 
 // LookupReq lookup a hash
-func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
+func (p *Passtor) LookupReq(hash *crypto.Hash) []NodeAddr {
 	// set initial lookup peers
 	initial := p.GetKCloser(hash)
 	statuses := make([]*LookupStatus, len(initial))
@@ -209,7 +211,7 @@ func (p *Passtor) HandleAllocation(msg Message) {
 
 // AllocateToPeer allocate some data to a peer, returns true on success,
 // false if cannot reach peer or error
-func (p *Passtor) AllocateToPeer(id Hash, peer NodeAddr, index, repl uint32,
+func (p *Passtor) AllocateToPeer(id crypto.Hash, peer NodeAddr, index, repl uint32,
 	data Datastructure) bool {
 
 	allocate := AllocateMessage{
@@ -225,7 +227,7 @@ func (p *Passtor) AllocateToPeer(id Hash, peer NodeAddr, index, repl uint32,
 
 // Allocate given data identified by the given id to the given replication
 // factor appropriate peers
-func (p *Passtor) Allocate(id Hash, repl uint32, data Datastructure) []NodeAddr {
+func (p *Passtor) Allocate(id crypto.Hash, repl uint32, data Datastructure) []NodeAddr {
 	peers := p.LookupReq(&id)
 
 	count := 0
@@ -267,7 +269,7 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data Datastructure) []NodeAddr 
 }
 
 // GetKCloser get the K closer nodes to given hash
-func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
+func (p *Passtor) GetKCloser(h *crypto.Hash) []NodeAddr {
 
 	if b, ok := p.Buckets[p.GetBucketID(h)]; ok && b.Size == DHTK {
 		// bucket exists append all addresses in list

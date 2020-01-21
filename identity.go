@@ -1,11 +1,9 @@
 package passtor
 
-import (
-	"crypto/sha256"
-)
+import "gitlab.gnugen.ch/gmichel/passtor/crypto"
 
 // SetIdentity set the identity of the passtor instance to the hash of the given
 // name
 func (p *Passtor) SetIdentity() {
-	p.NodeID = sha256.Sum256([]byte(p.Name))
+	p.NodeID = crypto.H(p.Name)
 }
