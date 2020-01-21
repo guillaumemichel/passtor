@@ -171,6 +171,7 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 				statuses[i].NodeAddr.NodeID.XOR(*hash).Compare(
 					statuses[j].NodeAddr.NodeID.XOR(*hash)) < 0)
 	})
+
 	// number of elements to return
 	n := DHTK
 	if len(statuses) < DHTK {
@@ -184,13 +185,82 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 }
 
 // LookupRep handles a lookup request and reply to it
-func (p *Passtor) LookupRep(req *Message) {
+func (p *Passtor) LookupRep(req Message) {
 	KCloser := p.GetKCloser(req.LookupReq)
 
 	req.LookupReq = nil
 	req.Reply = true
 	req.LookupRep = &KCloser
-	p.SendMessage(*req, req.Sender.Addr, MINRETRIES)
+	p.SendMessage(req, req.Sender.Addr, MINRETRIES)
+}
+
+// HandleAllocation handles an allocation on the remote peer
+func (p *Passtor) HandleAllocation(msg Message) {
+	req := msg.AllocationReq
+	rep := p.Store(req.Data, req.Index, req.Repl)
+
+	msg.AllocationReq = nil
+	msg.AllocationRep = &rep
+	msg.Reply = true
+	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
+}
+
+// AllocateToPeer allocate some data to a peer, returns true on success,
+// false if cannot reach peer or error
+func (p *Passtor) AllocateToPeer(id Hash, peer NodeAddr, index, repl uint32,
+	data Datastructure) bool {
+
+	allocate := AllocateMessage{
+		Data:  data,
+		Repl:  repl,
+		Index: index,
+	}
+	msg := Message{AllocationReq: &allocate}
+	rep := p.SendMessage(msg, peer.Addr, MINRETRIES)
+	return !(rep == nil) && rep.AllocationRep != nil &&
+		*rep.AllocationRep == NOERROR
+}
+
+// Allocate given data identified by the given id to the given replication
+// factor appropriate peers
+func (p *Passtor) Allocate(id Hash, repl uint32, data Datastructure) []NodeAddr {
+	peers := p.LookupReq(&id)
+
+	count := 0
+	allocations := make([]NodeAddr, 0)
+	m := sync.Mutex{}
+	wg := sync.WaitGroup{}
+
+	limit := int(repl)
+	if len(peers) < limit {
+		limit = len(peers)
+	}
+	wg.Add(limit)
+
+	for i := 0; i < limit; i++ {
+		go func() {
+			// while repl factor not match and not all peers tried
+			m.Lock()
+			for count < len(peers) {
+				// take an element in the list and increase the counter
+				peer := peers[count]
+				count++
+				index := uint32(len(allocations))
+				m.Unlock()
+				// allocation was a
+				if p.AllocateToPeer(id, peer, index, repl, data) {
+					m.Lock()
+					allocations = append(allocations, peer)
+					break
+				}
+				m.Lock()
+			}
+			m.Unlock()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	return allocations
 }
 
 // GetKCloser get the K closer nodes to given hash

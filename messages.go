@@ -83,7 +83,10 @@ func (p *Passtor) HandleMessage(protobufed []byte) {
 		p.SendMessage(rep, rep.Sender.Addr, MINRETRIES)
 	} else if rep.LookupReq != nil {
 		// reply to lookup
-		p.LookupRep(&rep)
+		p.LookupRep(rep)
+	} else if rep.AllocationReq != nil {
+		// allocate and reply to allocation request
+		p.HandleAllocation(rep)
 	}
 }
 
