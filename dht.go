@@ -2,7 +2,6 @@ package passtor
 
 import (
 	"fmt"
-	"math"
 	"net"
 	"sort"
 	"sync"
@@ -42,7 +41,7 @@ func (p *Passtor) Ping(peer net.UDPAddr, retries int) bool {
 // GetBucketID get the bucket identifier in which val belongs
 func (p *Passtor) GetBucketID(val *Hash) uint16 {
 	if p.NodeID.Compare(*val) == 0 {
-		return 0
+		return SHASIZE
 	}
 	dist := p.NodeID.XOR(*val)
 
@@ -105,6 +104,9 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 	m := sync.Mutex{}
 	for i, na := range initial {
 		statuses[i] = NewLookupStatus(na)
+		if statuses[i].NodeAddr.NodeID == p.Addr.NodeID {
+			statuses[i].Tested = true
+		}
 	}
 	wg := sync.WaitGroup{}
 
@@ -260,41 +262,36 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data Datastructure) []NodeAddr 
 		}()
 	}
 	wg.Wait()
+	p.Printer.Print(fmt.Sprint("Allocated at:", allocations), V2)
 	return allocations
 }
 
 // GetKCloser get the K closer nodes to given hash
 func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
+
+	if b, ok := p.Buckets[p.GetBucketID(h)]; ok && b.Size == DHTK {
+		// bucket exists append all addresses in list
+		return b.GetList()
+	}
+
 	list := make([]NodeAddr, 0)
-	var bID uint16 = math.MaxUint16
 
-	if p.NodeID.Compare(*h) != 0 {
-		bID = p.GetBucketID(h)
-
-		b, ok := p.Buckets[bID]
-		if ok {
-			// bucket exists append all addresses in list
-			list = append(list, b.GetList()...)
-		}
+	for _, b := range p.Buckets {
+		list = append(list, b.GetList()...)
 	}
+
+	// sort the array with id closest to target first
+	sort.Slice(list, func(i, j int) bool {
+		// (i xor h) < (j xor h)
+		return list[i].NodeID.XOR(*h).Compare(list[j].NodeID.XOR(*h)) < 0
+	})
+
+	size := DHTK
 	if len(list) < DHTK {
-		// less than k elements in corresponding bucket
-		// complete with random elements
-		for id, bucket := range p.Buckets {
-			if id != bID {
-				for _, h := range bucket.GetList() {
-					list = append(list, h)
-					if len(list) >= DHTK {
-						break
-					}
-				}
-			}
-			if len(list) >= DHTK {
-				break
-			}
-		}
+		size = len(list)
 	}
-	return list
+
+	return list[:size]
 }
 
 // Insert a new NodeAddress in the Bucket, called only if bucket not full

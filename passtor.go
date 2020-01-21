@@ -40,7 +40,11 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 	}
 	// set the passtor identifier
 	p.SetIdentity()
+	// set self address
 	p.Addr = NodeAddr{Addr: *udpAddr, NodeID: p.NodeID}
+	// add self to routing table
+	p.AddPeerToBucket(p.Addr)
+
 	p.Printer.Print(fmt.Sprint("NodeID: ", p.NodeID), V3)
 	return p
 }
