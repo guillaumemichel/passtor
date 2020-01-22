@@ -1,4 +1,4 @@
-package crypto
+package passtor
 
 import (
 	"golang.org/x/crypto/sha3"

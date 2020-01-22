@@ -3,15 +3,60 @@ package main
 import (
 	"bytes"
 	"gitlab.gnugen.ch/gmichel/passtor"
-	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 	"testing"
 )
+
+// go test gitlab.gnugen.ch/gmichel/passtor/tests
+
+func getUser() (string, string) {
+	return "issou@epfl.ch", "super-strong-master-password"
+}
+
+func TestGenerateReturnsKeysOfValidSize(t *testing.T) {
+
+	_, _, symmK, err := passtor.Generate()
+
+	var emptySymmK = passtor.SymmetricKey{}
+	if err != nil {
+		t.Fail()
+	}
+	if symmK == emptySymmK {
+		t.Fail()
+	}
+}
+
+func TestDecryptionOfAnEncryptedMessageReturnsTheMessage(t *testing.T) {
+	_, _, symmK, _ := passtor.Generate()
+
+	msg, _ := passtor.RandomBytes(1024)
+
+	ciphertext, nonce, _ := passtor.Encrypt(msg, symmK)
+	plaintext, _ := passtor.Decrypt(ciphertext, nonce, symmK)
+
+	if bytes.Compare(msg, plaintext) != 0 {
+		t.Fail()
+	}
+}
+
+func TestVerifyOfASignatureReturnsCorrect(t *testing.T) {
+	pk, sk, _, _ := passtor.Generate()
+
+	msg, _ := passtor.RandomBytes(1024)
+
+	sig := passtor.Sign(msg, sk)
+	correct := passtor.Verify(msg, sig, pk)
+
+	if !correct {
+		t.Fail()
+	}
+}
+
 
 func TestToKeysToKeysClient(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := crypto.GetSecret(username, mpass)
-	pk, sk, symmK, _ := crypto.Generate()
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
 		PublicKey:    pk,

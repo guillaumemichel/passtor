@@ -3,8 +3,6 @@ package passtor
 import (
 	"math"
 	"time"
-
-	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 const (
@@ -34,7 +32,7 @@ const (
 )
 
 // MAXDISTANCE maximum distance between two hashes
-var MAXDISTANCE crypto.Hash
+var MAXDISTANCE Hash
 
 func init() {
 	// set MAXDISTANCE

@@ -1,7 +1,6 @@
 package passtor
 
 import (
-	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 	"log"
 	"net"
 	"sync"
@@ -10,7 +9,7 @@ import (
 // NodeAddr node address entry in the k-bucket, node udp ip and port, and nodeID
 type NodeAddr struct {
 	Addr   net.UDPAddr // udp address (ip + port) of the node
-	NodeID crypto.Hash // nodeID of that node
+	NodeID Hash        // nodeID of that node
 }
 
 // MessageCounter structure containing message indexing tools
@@ -30,8 +29,8 @@ type Printer struct {
 
 // Passtor instance
 type Passtor struct {
-	Name   string      // name of the passtor instance
-	NodeID crypto.Hash // hash of the name of the passtor, node identifier
+	Name   string // name of the passtor instance
+	NodeID Hash   // hash of the name of the passtor, node identifier
 
 	PConn *net.UDPConn // udp socket to communicate with other passtors
 	CConn *net.UDPConn // udp socket to communicate with clients
@@ -46,12 +45,12 @@ type Passtor struct {
 
 // Message structure defining messages exchanged between passtors
 type Message struct {
-	ID        uint64       // message ID
-	Reply     bool         // message is a reply
-	Sender    *NodeAddr    // sender identity
-	Ping      *bool        // non nil if message is a ping message
-	LookupReq *crypto.Hash // value to lookup
-	LookupRep *[]NodeAddr  // lookup response
+	ID        uint64      // message ID
+	Reply     bool        // message is a reply
+	Sender    *NodeAddr   // sender identity
+	Ping      *bool       // non nil if message is a ping message
+	LookupReq *Hash       // value to lookup
+	LookupRep *[]NodeAddr // lookup response
 }
 
 // Bucket structure representing Kademlia k-buckets
@@ -78,43 +77,43 @@ type LookupStatus struct {
 
 // LoginMetaData for the Login structure.
 type LoginMetaData struct {
-	ServiceNonce crypto.Nonce
-	UsernameNonce crypto.Nonce
-	PasswordNonce crypto.Nonce
+	ServiceNonce  Nonce
+	UsernameNonce Nonce
+	PasswordNonce Nonce
 }
 
 // Credentials for a given service.
 type Credentials struct {
-	Username crypto.EncryptedData
-	Password crypto.EncryptedData
+	Username EncryptedData
+	Password EncryptedData
 }
 
 // Login is a tuple of credentials and corresponding metadata to ensure validity.
 type Login struct {
-	ID          crypto.Hash
-	Service     crypto.EncryptedData
+	ID          Hash
+	Service     EncryptedData
 	Credentials Credentials
 	MetaData    LoginMetaData
 }
 
 // KeysClient used only client side to store the keys used to sign or en/de-crypt data.
 type KeysClient struct {
-	PublicKey crypto.PublicKey
-	PrivateKey crypto.PrivateKey
-	SymmetricKey crypto.SymmetricKey
+	PublicKey    PublicKey
+	PrivateKey   PrivateKey
+	SymmetricKey SymmetricKey
 }
 
 // Keys used to encrypt, or sign data.
 type Keys struct {
-	PublicKey crypto.PublicKey
-	PrivateKeySeed crypto.EncryptedData
-	SymmetricKey crypto.EncryptedData
+	PublicKey      PublicKey
+	PrivateKeySeed EncryptedData
+	SymmetricKey   EncryptedData
 }
 
 // AccountMetaData for the Account structure.
 type AccountMetaData struct {
-	PrivateKeySeedNonce crypto.Nonce
-	SymmetricKeyNonce crypto.Nonce
+	PrivateKeySeedNonce Nonce
+	SymmetricKeyNonce   Nonce
 }
 
 // Account used only client side to store info about the current user.
@@ -125,13 +124,13 @@ type AccountClient struct {
 
 // Account groups everything that has been stored by a single user.
 type Account struct {
-	ID crypto.Hash
-	Keys Keys
-	Version uint
-	Data map[crypto.Hash]Login
-	MetaData AccountMetaData
-	Signature crypto.Signature
+	ID        Hash
+	Keys      Keys
+	Version   uint
+	Data      map[Hash]Login
+	MetaData  AccountMetaData
+	Signature Signature
 }
 
 // Accounts is the collection of all created accounts.
-type Accounts map[crypto.Hash]Account
+type Accounts map[Hash]Account

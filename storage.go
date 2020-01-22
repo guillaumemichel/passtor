@@ -1,16 +1,14 @@
 package passtor
 
-import "gitlab.gnugen.ch/gmichel/passtor/crypto"
-
-func (keysClient KeysClient) ToKeys(secret crypto.Secret) (Keys, crypto.Nonce, crypto.Nonce, error) {
-	skSeedEncrypted, skNonce, err := crypto.Encrypt(keysClient.PrivateKey.Seed(), secret)
+func (keysClient KeysClient) ToKeys(secret Secret) (Keys, Nonce, Nonce, error) {
+	skSeedEncrypted, skNonce, err := Encrypt(keysClient.PrivateKey.Seed(), secret)
 	if err != nil {
-		return Keys{}, crypto.Nonce{}, crypto.Nonce{}, err
+		return Keys{}, Nonce{}, Nonce{}, err
 	}
 
-	symmKEncrypted, symmKNonce, err := crypto.Encrypt(crypto.SymmetricKeyToBytes(keysClient.SymmetricKey), secret)
+	symmKEncrypted, symmKNonce, err := Encrypt(SymmetricKeyToBytes(keysClient.SymmetricKey), secret)
 	if err != nil {
-		return Keys{}, crypto.Nonce{}, crypto.Nonce{}, err
+		return Keys{}, Nonce{}, Nonce{}, err
 	}
 
 	return Keys{
@@ -20,31 +18,31 @@ func (keysClient KeysClient) ToKeys(secret crypto.Secret) (Keys, crypto.Nonce, c
 	}, skNonce, symmKNonce, nil
 }
 
-func (keys Keys) ToKeysClient(secret crypto.Secret,
-	privateKeySeedNonce crypto.Nonce,
-	symmetricKeyNonce crypto.Nonce) (KeysClient, error) {
+func (keys Keys) ToKeysClient(secret Secret,
+	privateKeySeedNonce Nonce,
+	symmetricKeyNonce Nonce) (KeysClient, error) {
 
-	skSeed, err := crypto.Decrypt(keys.PrivateKeySeed, privateKeySeedNonce, secret)
+	skSeed, err := Decrypt(keys.PrivateKeySeed, privateKeySeedNonce, secret)
 	if err != nil {
 		return KeysClient{}, err
 	}
 
-	symmKey, err := crypto.Decrypt(keys.SymmetricKey, symmetricKeyNonce, secret)
+	symmKey, err := Decrypt(keys.SymmetricKey, symmetricKeyNonce, secret)
 	if err != nil {
 		return KeysClient{}, err
 	}
 
 	return KeysClient{
 		PublicKey:    keys.PublicKey,
-		PrivateKey:   crypto.SeedToPrivateKey(skSeed),
-		SymmetricKey: crypto.BytesToSymmetricKey(symmKey),
+		PrivateKey:   SeedToPrivateKey(skSeed),
+		SymmetricKey: BytesToSymmetricKey(symmKey),
 	}, nil
 }
 
-func (accountClient AccountClient) ToEmptyAccount(secret crypto.Secret) Account {
+func (accountClient AccountClient) ToEmptyAccount(secret Secret) Account {
 	return Account{} // TODO
 }
 
-func (account Account) ToAccountClient(ID string, secret crypto.Secret) AccountClient {
+func (account Account) ToAccountClient(ID string, secret Secret) AccountClient {
 	return AccountClient{} // TODO
 }
