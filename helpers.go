@@ -152,3 +152,13 @@ func KDFToSecret(array []byte) Secret {
 
 	return secret
 }
+
+func HashToBytes(h Hash) []byte {
+	array := make([]byte, len(h))
+
+	for i, b := range h {
+		array[i] = b
+	}
+
+	return array
+}

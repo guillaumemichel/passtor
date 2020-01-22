@@ -118,7 +118,7 @@ type AccountMetaData struct {
 
 // Account used only client side to store info about the current user.
 type AccountClient struct {
-	ID string
+	ID   string
 	Keys KeysClient
 }
 
@@ -126,11 +126,11 @@ type AccountClient struct {
 type Account struct {
 	ID        Hash
 	Keys      Keys
-	Version   uint
+	Version   byte
 	Data      map[Hash]Login
 	MetaData  AccountMetaData
 	Signature Signature
 }
 
 // Accounts is the collection of all created accounts.
-type Accounts map[Hash]Account
+type Accounts = map[Hash]Account

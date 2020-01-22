@@ -51,7 +51,6 @@ func TestVerifyOfASignatureReturnsCorrect(t *testing.T) {
 	}
 }
 
-
 func TestToKeysToKeysClient(t *testing.T) {
 	username, mpass := getUser()
 
@@ -75,6 +74,68 @@ func TestToKeysToKeysClient(t *testing.T) {
 	}
 
 	if keysClient.SymmetricKey != keysPlain.SymmetricKey {
+		t.Fail()
+	}
+}
+
+func TestAccountSignedVerifies(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+
+	if !account.Verify() {
+		t.Fail()
+	}
+}
+
+func TestAccountConversionsMatch(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+
+	accountPlain, _ := account.ToAccountClient(username, secret)
+
+	if accountClient.ID != accountPlain.ID {
+		t.Fail()
+	}
+
+	if bytes.Compare(accountClient.Keys.PublicKey, accountPlain.Keys.PublicKey) != 0 {
+		t.Fail()
+	}
+
+	if bytes.Compare(accountClient.Keys.PrivateKey, accountPlain.Keys.PrivateKey) != 0 {
+		t.Fail()
+	}
+
+	if accountClient.Keys.SymmetricKey != accountPlain.Keys.SymmetricKey {
 		t.Fail()
 	}
 }
