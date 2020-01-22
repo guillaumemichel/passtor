@@ -29,6 +29,8 @@ const (
 	V2 = 2
 	// V3 verbose level 3 (mode verbose++)
 	V3 = 3
+	// TCPMAXPACKETSIZE is the largest size in bytes of a TCP packet
+	TCPMAXPACKETSIZE = 65535
 )
 
 // MAXDISTANCE maximum distance between two hashes

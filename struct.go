@@ -134,3 +134,16 @@ type Account struct {
 
 // Accounts is the collection of all created accounts.
 type Accounts = map[Hash]Account
+
+// ClientMessage represents a message than can be sent from a client to a node
+type ClientMessage struct {
+	Push *Account
+	Pull Hash
+}
+
+// ServerResponse represents a response from a node to a client
+type ServerResponse struct {
+	Status string
+	Debug  *string
+	Data   *Account
+}

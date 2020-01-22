@@ -3,12 +3,49 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"gitlab.gnugen.ch/gmichel/passtor"
+	"../../passtor"
+
+	"github.com/dedis/protobuf"
 )
+
+func handle(message passtor.ClientMessage) *passtor.ServerResponse {
+	// TODO implement store and retrieve data logic
+	return nil
+}
+
+func listenToClients() {
+
+	server, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		fmt.Println("Error while starting TCP server")
+		return
+	}
+	conn, _ := server.Accept()
+
+	go func() {
+		for {
+			packetBytes := make([]byte, passtor.TCPMAXPACKETSIZE)
+			_, err := conn.Read(packetBytes)
+			if err != nil {
+				println("Unable to read packet from TCP connection")
+			}
+
+			var message passtor.ClientMessage
+			protobuf.Decode(packetBytes, &message)
+			response := handle(message)
+			responseBytes, err := protobuf.Encode(response)
+			if err != nil {
+				fmt.Println("Error while parsing response to be sent to client")
+			}
+			conn.Write(responseBytes)
+		}
+	}()
+}
 
 func main() {
 
