@@ -22,7 +22,7 @@ const (
 )
 
 // Secret is the secret used by the user to locally decrypt its symmetric key K and secret key sk
-type Secret [SECRETLENGTH]byte
+type Secret = SymmetricKey
 
 // Secret generates a secret for the given user
 func GetSecret(userID, masterPassword string) Secret {

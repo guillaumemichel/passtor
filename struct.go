@@ -76,13 +76,11 @@ type LookupStatus struct {
 	Failed   bool
 }
 
-// MetaData for the Login structure.
-type MetaData struct {
+// LoginMetaData for the Login structure.
+type LoginMetaData struct {
 	ServiceNonce crypto.Nonce
 	UsernameNonce crypto.Nonce
 	PasswordNonce crypto.Nonce
-	PrivateKeySeedNonce crypto.Nonce
-	SymmetricKeyNonce crypto.Nonce
 }
 
 // Credentials for a given service.
@@ -96,7 +94,7 @@ type Login struct {
 	ID          crypto.Hash
 	Service     crypto.EncryptedData
 	Credentials Credentials
-	MetaData    MetaData
+	MetaData    LoginMetaData
 }
 
 // KeysClient used only client side to store the keys used to sign or en/de-crypt data.
@@ -113,6 +111,12 @@ type Keys struct {
 	SymmetricKey crypto.EncryptedData
 }
 
+// AccountMetaData for the Account structure.
+type AccountMetaData struct {
+	PrivateKeySeedNonce crypto.Nonce
+	SymmetricKeyNonce crypto.Nonce
+}
+
 // Account used only client side to store info about the current user.
 type AccountClient struct {
 	ID string
@@ -123,8 +127,9 @@ type AccountClient struct {
 type Account struct {
 	ID crypto.Hash
 	Keys Keys
-	Data map[crypto.Hash]Login
 	Version uint
+	Data map[crypto.Hash]Login
+	MetaData AccountMetaData
 	Signature crypto.Signature
 }
 

@@ -43,3 +43,7 @@ func Generate() (PublicKey, PrivateKey, SymmetricKey, error) {
 
 	return pk, sk, symmKey, nil
 }
+
+func SeedToPrivateKey(seed []byte) PrivateKey {
+	return ed25519.NewKeyFromSeed(seed)
+}
