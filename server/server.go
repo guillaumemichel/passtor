@@ -3,14 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gitlab.gnugen.ch/gmichel/passtor"
+	"go.dedis.ch/protobuf"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"../../passtor"
-
-	"github.com/dedis/protobuf"
 )
 
 func handle(message passtor.ClientMessage) *passtor.ServerResponse {
