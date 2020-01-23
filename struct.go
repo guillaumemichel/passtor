@@ -88,6 +88,12 @@ type Credentials struct {
 	Password EncryptedData
 }
 
+// LoginClient used to display restricted plaintext info about a login
+type LoginClient struct {
+	Service  string
+	Username string
+}
+
 // Login is a tuple of credentials and corresponding metadata to ensure validity.
 type Login struct {
 	ID          Hash

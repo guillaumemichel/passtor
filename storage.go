@@ -106,6 +106,10 @@ func (keys Keys) ToKeysClient(secret Secret,
 	}, nil
 }
 
+func (accountClient AccountClient) GetID() Hash {
+	return H([]byte(accountClient.ID))
+}
+
 func (accountClient AccountClient) ToEmptyAccount(secret Secret) (Account, error) {
 	keys, skNonce, symmKNonce, err := accountClient.Keys.ToKeys(secret)
 	if err != nil {
@@ -113,7 +117,7 @@ func (accountClient AccountClient) ToEmptyAccount(secret Secret) (Account, error
 	}
 
 	return Account{
-		ID:      H([]byte(accountClient.ID)),
+		ID:      accountClient.GetID(),
 		Keys:    keys,
 		Version: 0,
 		Data:    map[Hash]Login{},
@@ -139,6 +143,151 @@ func (account Account) ToAccountClient(ID string, secret Secret) (AccountClient,
 		ID:   ID,
 		Keys: keysClient,
 	}, nil
+}
+
+func (login Login) ToLoginClient(symmK SymmetricKey) (LoginClient, error) {
+	servicePlain, err := Decrypt(login.Service, login.MetaData.ServiceNonce, symmK)
+	if err != nil {
+		return LoginClient{}, err
+	}
+
+	usernamePlain, err := Decrypt(login.Credentials.Username, login.MetaData.UsernameNonce, symmK)
+	if err != nil {
+		return LoginClient{}, err
+	}
+
+	return LoginClient{
+		Service:  string(servicePlain),
+		Username: string(usernamePlain),
+	}, nil
+}
+
+func (loginClient LoginClient) GetID(symmK SymmetricKey) Hash {
+	return H(append([]byte(loginClient.Service), append([]byte(loginClient.Username), SymmetricKeyToBytes(symmK)...)...))
+}
+
+func (loginClient LoginClient) ToNewLogin(keysClient KeysClient) (Login, error) {
+	serviceEncrypted, serviceNonce, err := Encrypt([]byte(loginClient.Service), keysClient.SymmetricKey)
+	if err != nil {
+		return Login{}, err
+	}
+
+	usernameEncrypted, usernameNonce, err := Encrypt([]byte(loginClient.Username), keysClient.SymmetricKey)
+	if err != nil {
+		return Login{}, err
+	}
+
+	password, err := Passphrase()
+	if err != nil {
+		return Login{}, err
+	}
+	passwordEncrypted, passwordNonce, err := Encrypt([]byte(password), keysClient.SymmetricKey)
+	if err != nil {
+		return Login{}, err
+	}
+
+	return Login{
+		ID:      loginClient.GetID(keysClient.SymmetricKey),
+		Service: serviceEncrypted,
+		Credentials: Credentials{
+			Username: usernameEncrypted,
+			Password: passwordEncrypted,
+		},
+		MetaData: LoginMetaData{
+			ServiceNonce:  serviceNonce,
+			UsernameNonce: usernameNonce,
+			PasswordNonce: passwordNonce,
+		},
+	}, nil
+}
+
+func (account Account) AddLogin(loginClient LoginClient, keysClient KeysClient) (Account, error) {
+	if !account.Verify() {
+		return Account{}, errors.New("account does not verify")
+	}
+
+	login, err := loginClient.ToNewLogin(keysClient)
+	if err != nil {
+		return Account{}, err
+	}
+
+	if _, ok := account.Data[login.ID]; ok {
+		return Account{}, errors.New("login already exists")
+	}
+
+	newLogins := account.Data
+	newLogins[login.ID] = login
+
+	return Account{
+		ID:        account.ID,
+		Keys:      account.Keys,
+		Version:   account.Version + 1,
+		Data:      newLogins,
+		MetaData:  account.MetaData,
+		Signature: Signature{},
+	}.Sign(keysClient.PrivateKey), nil
+}
+
+func (account Account) DeleteLogin(ID Hash, sk PrivateKey) (Account, error) {
+	if !account.Verify() {
+		return Account{}, errors.New("account does not verify")
+	}
+
+	if _, ok := account.Data[ID]; !ok {
+		return Account{}, errors.New("login does not exist")
+	}
+
+	newLogins := account.Data
+	delete(newLogins, ID)
+
+	return Account{
+		ID:        account.ID,
+		Keys:      account.Keys,
+		Version:   account.Version + 1,
+		Data:      newLogins,
+		MetaData:  account.MetaData,
+		Signature: Signature{},
+	}.Sign(sk), nil
+}
+
+func (account Account) UpdateLoginPassword(ID Hash, keysClient KeysClient) (Account, error) {
+	if !account.Verify() {
+		return Account{}, errors.New("account does not verify")
+	}
+
+	if _, ok := account.Data[ID]; !ok {
+		return Account{}, errors.New("login does not exists")
+	}
+
+	servicePlain, err := Decrypt(account.Data[ID].Service, account.Data[ID].MetaData.ServiceNonce, keysClient.SymmetricKey)
+	if err != nil {
+		return Account{}, err
+	}
+
+	usernamePlain, err := Decrypt(account.Data[ID].Credentials.Username, account.Data[ID].MetaData.UsernameNonce, keysClient.SymmetricKey)
+	if err != nil {
+		return Account{}, err
+	}
+
+	login, err := LoginClient{
+		Service:  string(servicePlain),
+		Username: string(usernamePlain),
+	}.ToNewLogin(keysClient)
+	if err != nil {
+		return Account{}, err
+	}
+
+	newLogins := account.Data
+	newLogins[login.ID] = login
+
+	return Account{
+		ID:        account.ID,
+		Keys:      account.Keys,
+		Version:   account.Version + 1,
+		Data:      newLogins,
+		MetaData:  account.MetaData,
+		Signature: Signature{},
+	}.Sign(keysClient.PrivateKey), nil
 }
 
 func (accounts Accounts) Store(newAccount Account) error {

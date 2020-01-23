@@ -4,7 +4,6 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-
 const (
 	// NONCESIZE size in bytes for a nonce
 	NONCESIZE = chacha20poly1305.NonceSizeX
@@ -34,11 +33,6 @@ func Encrypt(data []byte, key SymmetricKey) (EncryptedData, Nonce, error) {
 
 // Decrypt decrypts the given ciphertext under the given key
 func Decrypt(ciphertext []byte, nonce Nonce, key SymmetricKey) ([]byte, error) {
-
-	if len(ciphertext) <= chacha20poly1305.NonceSizeX {
-		panic("Invalid ciphertext")
-	}
-
 	cipher, err := chacha20poly1305.NewX(SymmetricKeyToBytes(key))
 	if err != nil {
 		return nil, err
