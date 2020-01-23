@@ -139,3 +139,139 @@ func TestAccountConversionsMatch(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestStoreNewAccount(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+	if !account.Verify() {
+		t.Fail()
+	}
+
+	accounts := make(passtor.Accounts)
+
+	err := accounts.Store(account)
+
+	if err != nil {
+		t.Fail()
+	}
+	if len(accounts) != 1 {
+		t.Fail()
+	}
+	if !accounts[account.ID].Verify() {
+		t.Fail()
+	}
+}
+
+func TestStoreIncorrectAccountFails(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+	account.Version = 3
+	if account.Verify() {
+		t.Fail()
+	}
+
+	accounts := make(passtor.Accounts)
+
+	err := accounts.Store(account)
+
+	if err == nil {
+		t.Fail()
+	}
+	if len(accounts) != 0 {
+		t.Fail()
+	}
+}
+
+func TestStoreUpdateOldAccount(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+	if !account.Verify() {
+		t.Fail()
+	}
+
+	accounts := make(passtor.Accounts)
+
+	err := accounts.Store(account)
+
+	if err != nil {
+		t.Fail()
+	}
+	if len(accounts) != 1 {
+		t.Fail()
+	}
+	if !accounts[account.ID].Verify() {
+		t.Fail()
+	}
+
+	err = accounts.Store(account)
+
+	if err == nil {
+		t.Fail()
+	}
+	if len(accounts) != 1 {
+		t.Fail()
+	}
+	if !accounts[account.ID].Verify() {
+		t.Fail()
+	}
+
+	pkNew, _, _, _ := passtor.Generate()
+	account.Keys.PublicKey = pkNew
+
+	err = accounts.Store(account)
+
+	if err == nil {
+		t.Fail()
+	}
+	if len(accounts) != 1 {
+		t.Fail()
+	}
+	if !accounts[account.ID].Verify() {
+		t.Fail()
+	}
+}

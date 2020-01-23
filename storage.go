@@ -141,7 +141,6 @@ func (account Account) ToAccountClient(ID string, secret Secret) (AccountClient,
 	}, nil
 }
 
-// TODO: test
 func (accounts Accounts) Store(newAccount Account) error {
 	if !newAccount.Verify() {
 		return errors.New("account does not verify")
