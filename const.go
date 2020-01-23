@@ -21,6 +21,11 @@ const (
 	// BYTELENGTH number of bits in a byte
 	BYTELENGTH uint16 = 8
 
+	// PASSPHRASELENGHT default length in words for a passphrase
+	PASSPHRASELENGHT = 8
+	// PASSPHRASESEP default word seperator in a passphrase
+	PASSPHRASESEP = "."
+
 	// V0 verbose level 0 (no output)
 	V0 = 0
 	// V1 verbose level 1 (normal output)

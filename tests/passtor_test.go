@@ -275,3 +275,101 @@ func TestStoreUpdateOldAccount(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestToNewLoginDataIntegrity(t *testing.T) {
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	loginClient := passtor.LoginClient{
+		Service:  "twitter",
+		Username: "@trump",
+	}
+
+	login, _ := loginClient.ToNewLogin(keysClient)
+	loginPlain, _ := login.ToLoginClient(keysClient.SymmetricKey)
+
+	if loginClient.Service != loginPlain.Service {
+		t.Fail()
+	}
+	if loginClient.Username != loginPlain.Username {
+		t.Fail()
+	}
+}
+
+func TestLoginAddUpdateDelete(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+	if !account.Verify() {
+		t.Fail()
+	}
+	if len(account.Data) != 0 {
+		t.Fail()
+	}
+	if account.Version != 0 {
+		t.Fail()
+	}
+
+	loginClientTwitter := passtor.LoginClient{
+		Service:  "twitter",
+		Username: "@trump",
+	}
+
+	account, _ = account.AddLogin(loginClientTwitter, keysClient)
+	if len(account.Data) != 1 {
+		t.Fail()
+	}
+	if account.Version != 1 {
+		t.Fail()
+	}
+
+	_, err := account.AddLogin(loginClientTwitter, keysClient)
+	if err == nil {
+		t.Fail()
+	}
+
+	account, _ = account.UpdateLoginPassword(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient)
+	if len(account.Data) != 1 {
+		t.Fail()
+	}
+	if account.Version != 2 {
+		t.Fail()
+	}
+
+	account, _ = account.DeleteLogin(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient.PrivateKey)
+	if len(account.Data) != 0 {
+		t.Fail()
+	}
+	if account.Version != 3 {
+		t.Fail()
+	}
+
+	_, err = account.UpdateLoginPassword(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient)
+	if err == nil {
+		t.Fail()
+	}
+
+	_, err = account.DeleteLogin(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient.PrivateKey)
+	if err == nil {
+		t.Fail()
+	}
+}
