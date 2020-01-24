@@ -10,7 +10,7 @@ const HASHSIZE = 64
 // Hash is a flexible type to handle hashes
 type Hash [HASHSIZE]byte
 
-// H hashes the given string value
+// H hashes the given bytes value
 func H(data []byte) Hash {
 	return sha3.Sum512(data)
 }
