@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// go test gitlab.gnugen.ch/gmichel/passtor/tests
+// go test -v -count=1 gitlab.gnugen.ch/gmichel/passtor/tests
 
 func getUser() (string, string) {
 	return "issou@epfl.ch", "super-strong-master-password"
@@ -342,6 +342,16 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 		t.Fail()
 	}
 
+	for _, v := range account.Data {
+		servicePlain, _ := passtor.Decrypt(v.Service, v.MetaData.ServiceNonce, keysClient.SymmetricKey)
+		usernamePlain, _ := passtor.Decrypt(v.Credentials.Username, v.MetaData.UsernameNonce, keysClient.SymmetricKey)
+		passwordPlain, _ := passtor.Decrypt(v.Credentials.Password, v.MetaData.PasswordNonce, keysClient.SymmetricKey)
+
+		t.Log("SERVICE: " + string(servicePlain))
+		t.Log("USERNAME: " + string(usernamePlain))
+		t.Log("PASSWORD: " + string(passwordPlain))
+	}
+
 	_, err := account.AddLogin(loginClientTwitter, keysClient)
 	if err == nil {
 		t.Fail()
@@ -353,6 +363,16 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 	}
 	if account.Version != 2 {
 		t.Fail()
+	}
+
+	for _, v := range account.Data {
+		servicePlain, _ := passtor.Decrypt(v.Service, v.MetaData.ServiceNonce, keysClient.SymmetricKey)
+		usernamePlain, _ := passtor.Decrypt(v.Credentials.Username, v.MetaData.UsernameNonce, keysClient.SymmetricKey)
+		passwordPlain, _ := passtor.Decrypt(v.Credentials.Password, v.MetaData.PasswordNonce, keysClient.SymmetricKey)
+
+		t.Log("SERVICE: " + string(servicePlain))
+		t.Log("USERNAME: " + string(usernamePlain))
+		t.Log("PASSWORD: " + string(passwordPlain))
 	}
 
 	account, _ = account.DeleteLogin(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient.PrivateKey)
@@ -371,5 +391,70 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 	_, err = account.DeleteLogin(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient.PrivateKey)
 	if err == nil {
 		t.Fail()
+	}
+}
+
+func TestGetLoginClientList(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+
+	loginClientTwitter := passtor.LoginClient{
+		Service:  "twitter",
+		Username: "@trump_twitter",
+	}
+
+	loginClientMastodon := passtor.LoginClient{
+		Service:  "mastodon",
+		Username: "@trump_mastodon",
+	}
+
+	loginClientReddit := passtor.LoginClient{
+		Service:  "reddit",
+		Username: "@trump_reddit",
+	}
+
+	account, _ = account.AddLogin(loginClientTwitter, keysClient)
+	account, _ = account.AddLogin(loginClientMastodon, keysClient)
+	account, _ = account.AddLogin(loginClientReddit, keysClient)
+	if len(account.Data) != 3 {
+		t.Fail()
+	}
+	if account.Version != 3 {
+		t.Fail()
+	}
+
+	for _, v := range account.Data {
+		servicePlain, _ := passtor.Decrypt(v.Service, v.MetaData.ServiceNonce, keysClient.SymmetricKey)
+		usernamePlain, _ := passtor.Decrypt(v.Credentials.Username, v.MetaData.UsernameNonce, keysClient.SymmetricKey)
+		passwordPlain, _ := passtor.Decrypt(v.Credentials.Password, v.MetaData.PasswordNonce, keysClient.SymmetricKey)
+
+		t.Log("SERVICE: " + string(servicePlain))
+		t.Log("USERNAME: " + string(usernamePlain))
+		t.Log("PASSWORD: " + string(passwordPlain))
+	}
+
+	loginList, _ := account.GetLoginClientList(keysClient.SymmetricKey)
+	if len(loginList) != 3 {
+		t.Fail()
+	}
+
+	for _, l := range loginList {
+		t.Log("SERVICE: " + l.Service)
+		t.Log("USERNAME: " + l.Username)
 	}
 }

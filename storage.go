@@ -37,8 +37,8 @@ func HashLogins(logins map[Hash]Login) Hash {
 	data := make([]byte, len(logins)*HASHSIZE)
 
 	i := 0
-	for _, login := range logins {
-		copy(data[i:], HashToBytes(login.Hash()))
+	for _, key := range GetKeysSorted(logins) {
+		copy(data[i:], HashToBytes(logins[key].Hash()))
 		i += HASHSIZE
 	}
 
@@ -288,6 +288,23 @@ func (account Account) UpdateLoginPassword(ID Hash, keysClient KeysClient) (Acco
 		MetaData:  account.MetaData,
 		Signature: Signature{},
 	}.Sign(keysClient.PrivateKey), nil
+}
+
+func (account Account) GetLoginClientList(symmK SymmetricKey) ([]LoginClient, error) {
+	list := make([]LoginClient, len(account.Data))
+
+	i := 0
+	for _, login := range account.Data {
+		loginClient, err := login.ToLoginClient(symmK)
+		if err != nil {
+			return nil, err
+		}
+
+		list[i] = loginClient
+		i += 1
+	}
+
+	return list, nil
 }
 
 func (accounts Accounts) Store(newAccount Account) error {

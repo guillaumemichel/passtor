@@ -2,7 +2,9 @@ package passtor
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"net"
+	"sort"
 	"strings"
 	"time"
 )
@@ -161,4 +163,42 @@ func HashToBytes(h Hash) []byte {
 	}
 
 	return array
+}
+
+func BytesToHash(array []byte) Hash {
+	if len(array) != HASHSIZE {
+		panic("Array is expected to have size " + string(HASHSIZE))
+	}
+
+	var h = Hash{}
+	for i, b := range array {
+		h[i] = b
+	}
+
+	return h
+}
+
+func GetKeysSorted(data map[Hash]Login) []Hash {
+	keysString := make([]string, len(data))
+
+	i := 0
+	for k, _ := range data {
+		keysString[i] = base64.StdEncoding.EncodeToString(HashToBytes(k))
+		i += 1
+	}
+	sort.Strings(keysString)
+
+	keysHash := make([]Hash, len(data))
+
+	i = 0
+	for _, s := range keysString {
+		h, err := base64.StdEncoding.DecodeString(s)
+		if err != nil {
+			panic("base64 decoding failed")
+		}
+		keysHash[i] = BytesToHash(h)
+		i += 1
+	}
+
+	return keysHash
 }
