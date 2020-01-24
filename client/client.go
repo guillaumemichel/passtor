@@ -3,9 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gitlab.gnugen.ch/gmichel/passtor"
 	"os"
-
-	"../../passtor"
 )
 
 func handleNewAccount() (*passtor.AccountClient, *passtor.Account) {

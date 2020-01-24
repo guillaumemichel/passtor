@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-
-	"../../passtor"
+	"gitlab.gnugen.ch/gmichel/passtor"
 )
 
 func LaunchCrazyCLI(account passtor.AccountClient) {

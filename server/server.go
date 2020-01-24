@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gitlab.gnugen.ch/gmichel/passtor"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"../../passtor"
 	"go.dedis.ch/protobuf"
 )
 
@@ -39,6 +39,13 @@ func handle(accounts passtor.Accounts, message passtor.ClientMessage) *passtor.S
 				Data:   &account,
 			}
 		}
+
+		msg := "This account does not exist"
+		return &passtor.ServerResponse{
+			Status: "error",
+			Debug:  &msg,
+		}
+
 	}
 
 	return nil

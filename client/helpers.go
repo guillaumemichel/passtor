@@ -3,11 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"gitlab.gnugen.ch/gmichel/passtor"
 	"net"
 	"os"
 	"strings"
 
-	"../../passtor"
 	"go.dedis.ch/protobuf"
 )
 
