@@ -48,7 +48,7 @@ func HashLogins(logins map[Hash]Login) Hash {
 func (account Account) GetSignData() []byte {
 	return append(HashToBytes(account.ID),
 		append(HashToBytes(account.Keys.Hash()),
-			append([]byte{account.Version},
+			append([]byte{byte(account.Version)},
 				append(HashToBytes(HashLogins(account.Data)), HashToBytes(account.MetaData.Hash())...)...)...)...)
 }
 

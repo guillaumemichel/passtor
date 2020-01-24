@@ -37,15 +37,17 @@ func handleNewAccount() (*passtor.AccountClient, *passtor.Account) {
 
 }
 
-func handleUpdates(account *passtor.AccountClient) {
-	LaunchCrazyCLI(account)
+func handleUpdates(accountClient passtor.AccountClient) {
+	LaunchCrazyCLI(accountClient)
 }
 
 func queryAccount(ID, node string, completion func(*passtor.ServerResponse)) {
 
+	h := passtor.H([]byte(ID))
 	query := &passtor.ClientMessage{
-		Pull: passtor.H([]byte(ID)),
+		Pull: &h,
 	}
+
 	completion(Request(query, node))
 }
 
@@ -56,8 +58,21 @@ func main() {
 
 	if *username == "" {
 
-		accountClient, _ := handleNewAccount()
-		handleUpdates(accountClient)
+		accountClient, account := handleNewAccount()
+		message := &passtor.ClientMessage{
+			Push: account,
+		}
+
+		res := Request(message, *node)
+		if res.Status == "ok" {
+
+			handleUpdates(*accountClient)
+
+		} else {
+
+			FailWithError("Error while creating your account", res.Debug)
+
+		}
 
 	} else {
 
@@ -69,10 +84,13 @@ func main() {
 				secret := passtor.GetSecret(*username, masterPassword)
 				accountClient, err := response.Data.ToAccountClient(*username, secret)
 				AbortOnError(err, "Wrong password")
-				handleUpdates(&accountClient)
+				handleUpdates(accountClient)
+
+			} else {
+
+				FailWithError("Error while fetching your account", response.Debug)
 
 			}
-
 		})
 
 	}

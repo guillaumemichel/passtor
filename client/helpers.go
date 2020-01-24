@@ -48,6 +48,15 @@ func AbortOnError(err error, message string) {
 	}
 }
 
+// FailWithError terminates the program after printing an error
+func FailWithError(message string, debug *string) {
+	fmt.Println(message)
+	if debug != nil {
+		fmt.Println(*debug)
+	}
+	os.Exit(1)
+}
+
 // Request queries the given node with the given message and returns the response from the server
 func Request(message *passtor.ClientMessage, host string) *passtor.ServerResponse {
 
@@ -63,7 +72,7 @@ func Request(message *passtor.ClientMessage, host string) *passtor.ServerRespons
 	reply := make([]byte, passtor.TCPMAXPACKETSIZE)
 	n, err := conn.Read(reply)
 	var response passtor.ServerResponse
-	err = protobuf.Decode(reply[:n], response)
+	err = protobuf.Decode(reply[:n], &response)
 	AbortOnError(err, "Could not parse server response")
 
 	return &response

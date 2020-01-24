@@ -132,7 +132,7 @@ type AccountClient struct {
 type Account struct {
 	ID        Hash
 	Keys      Keys
-	Version   byte
+	Version   uint32
 	Data      map[Hash]Login
 	MetaData  AccountMetaData
 	Signature Signature
@@ -144,7 +144,7 @@ type Accounts map[Hash]Account
 // ClientMessage represents a message than can be sent from a client to a node
 type ClientMessage struct {
 	Push *Account
-	Pull Hash
+	Pull *Hash
 }
 
 // ServerResponse represents a response from a node to a client
