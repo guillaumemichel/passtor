@@ -307,6 +307,19 @@ func (account Account) GetLoginClientList(symmK SymmetricKey) ([]LoginClient, er
 	return list, nil
 }
 
+func (account Account) GetLoginPassword(loginClient LoginClient, symmK SymmetricKey) ([]byte, error) {
+	if login, ok := account.Data[loginClient.GetID(symmK)]; ok {
+		password, err := Decrypt(login.Credentials.Password, login.MetaData.PasswordNonce, symmK)
+		if err != nil {
+			return nil, err
+		}
+
+		return password, nil
+	}
+
+	return nil, errors.New("login does not exist")
+}
+
 func (accounts Accounts) Store(newAccount Account) error {
 	if !newAccount.Verify() {
 		return errors.New("account does not verify")

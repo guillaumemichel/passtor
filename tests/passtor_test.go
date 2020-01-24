@@ -458,3 +458,51 @@ func TestGetLoginClientList(t *testing.T) {
 		t.Log("USERNAME: " + l.Username)
 	}
 }
+
+func TestGetPassword(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+
+	loginClientTwitter := passtor.LoginClient{
+		Service:  "twitter",
+		Username: "@trump_twitter",
+	}
+
+	loginClientMastodon := passtor.LoginClient{
+		Service:  "mastodon",
+		Username: "@trump_mastodon",
+	}
+
+	loginClientReddit := passtor.LoginClient{
+		Service:  "reddit",
+		Username: "@trump_reddit",
+	}
+
+	account, _ = account.AddLogin(loginClientTwitter, keysClient)
+	account, _ = account.AddLogin(loginClientMastodon, keysClient)
+	account, _ = account.AddLogin(loginClientReddit, keysClient)
+
+	loginList, _ := account.GetLoginClientList(keysClient.SymmetricKey)
+
+	for _, loginClient := range loginList {
+		password, _ := account.GetLoginPassword(loginClient, keysClient.SymmetricKey)
+
+		t.Log(loginClient)
+		t.Log(string(password))
+	}
+}
