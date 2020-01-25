@@ -1,6 +1,6 @@
 package passtor
 
-import "./crypto"
+import "gitlab.gnugen.ch/gmichel/passtor/crypto"
 
 // SetIdentity set the identity of the passtor instance to the hash of the given
 // name

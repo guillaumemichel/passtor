@@ -5,7 +5,7 @@ import (
 	"net"
 	"sync"
 
-	"./crypto"
+	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 // NodeAddr node address entry in the k-bucket, node udp ip and port, and nodeID
@@ -18,7 +18,7 @@ type NodeAddr struct {
 type MessageCounter struct {
 	Mutex *sync.Mutex // mutex of the structure
 
-	IDCounter  uint64                   // current message ID
+	IDCounter  *uint64                  // current message ID
 	PendingMsg map[uint64]*chan Message // list of current pending messages
 }
 
@@ -37,7 +37,7 @@ type Passtor struct {
 	PConn *net.UDPConn // udp socket to communicate with other passtors
 	CConn *net.UDPConn // udp socket to communicate with clients
 
-	Messages MessageCounter // handles message id and pending messages
+	Messages *MessageCounter // handles message id and pending messages
 
 	Addr    NodeAddr           // address used to communicate with passtors
 	Buckets map[uint16]*Bucket // k-buckets used in the DHT
@@ -47,12 +47,16 @@ type Passtor struct {
 
 // Message structure defining messages exchanged between passtors
 type Message struct {
-	ID        uint64       // message ID
-	Reply     bool         // message is a reply
-	Sender    *NodeAddr    // sender identity
-	Ping      *bool        // non nil if message is a ping message
-	LookupReq *crypto.Hash // value to lookup
-	LookupRep *[]NodeAddr  // lookup response
+	ID            uint64       // message ID
+	Reply         bool         // message is a reply
+	Sender        *NodeAddr    // sender identity
+	Ping          *bool        // non nil if message is a ping message
+	LookupReq     *crypto.Hash // value to lookup
+	LookupRep     *[]NodeAddr  // lookup response
+	AllocationReq *AllocateMessage
+	AllocationRep *string
+	FetchReq      *crypto.Hash
+	FetchRep      *Datastructure
 }
 
 // Bucket structure representing Kademlia k-buckets
@@ -75,4 +79,16 @@ type LookupStatus struct {
 	NodeAddr NodeAddr
 	Tested   bool
 	Failed   bool
+}
+
+// AllocateMessage message requesting a node to allocate a file
+type AllocateMessage struct {
+	Data  Datastructure
+	Index uint32
+	Repl  uint32
+}
+
+// Datastructure temporary structre of things that will be written somewhere
+type Datastructure struct {
+	MyData string
 }

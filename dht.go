@@ -2,12 +2,11 @@ package passtor
 
 import (
 	"fmt"
-	"math"
 	"net"
 	"sort"
 	"sync"
 
-	. "./crypto"
+	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 // JoinDHT passtor join the DHT
@@ -42,9 +41,9 @@ func (p *Passtor) Ping(peer net.UDPAddr, retries int) bool {
 }
 
 // GetBucketID get the bucket identifier in which val belongs
-func (p *Passtor) GetBucketID(val *Hash) uint16 {
+func (p *Passtor) GetBucketID(val *crypto.Hash) uint16 {
 	if p.NodeID.Compare(*val) == 0 {
-		return 0
+		return crypto.HASHSIZE
 	}
 	dist := p.NodeID.XOR(*val)
 
@@ -100,57 +99,83 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 }
 
 // LookupReq lookup a hash
-func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
+func (p *Passtor) LookupReq(hash *crypto.Hash) []NodeAddr {
 	// set initial lookup peers
 	initial := p.GetKCloser(hash)
 	statuses := make([]*LookupStatus, len(initial))
+	m := sync.Mutex{}
 	for i, na := range initial {
 		statuses[i] = NewLookupStatus(na)
+		if statuses[i].NodeAddr.NodeID == p.Addr.NodeID {
+			statuses[i].Tested = true
+		}
 	}
-	// TODO concurrency with concurrency parameter ALPHA
-	found := true
-	for found {
-		found = false
-		// if all values are already looked up, found = false -> exit loop
-		for _, s := range statuses {
-			if !s.Tested {
-				// lookup at that node
-				found = true
-				msg := Message{LookupReq: hash}
-				reply := p.SendMessage(msg, s.NodeAddr.Addr, MINRETRIES)
-				// now we tested this node
-				s.Tested = true
-				if reply == nil {
-					s.Failed = true
-				} else {
-					// update statuses with new results
-					for _, n := range *reply.LookupRep {
-						// if peer not in statuses yet, insert it
-						alreadyIn := false
-						for _, s := range statuses {
-							if s.NodeAddr.NodeID.Compare(n.NodeID) == 0 {
-								// already in list
-								alreadyIn = true
-								break
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < ALPHA; i++ {
+		// ALPHA parallel requests iterating on the statuses
+		go func() {
+			wg.Add(1)
+			found := true
+			for found {
+				found = false
+				// if all values are already looked up, found = false -> exit loop
+				for _, s := range statuses {
+					m.Lock()
+					if !s.Tested {
+						// lookup at that node
+						s.Tested = true
+						m.Unlock()
+						found = true
+						msg := Message{LookupReq: hash}
+						reply := p.SendMessage(msg, s.NodeAddr.Addr, MINRETRIES)
+						// now we tested this node
+						if reply == nil {
+							s.Failed = true
+						} else {
+							// update statuses with new results
+							for _, n := range *reply.LookupRep {
+								// if peer not in statuses yet, insert it
+								alreadyIn := false
+								m.Lock()
+								for _, s := range statuses {
+									if s.NodeAddr.NodeID.Compare(n.NodeID) == 0 {
+										// already in list
+										alreadyIn = true
+										break
+									}
+								}
+								m.Unlock()
+								if !alreadyIn && p.NodeID.Compare(n.NodeID) != 0 {
+									// if not in list, add it
+									m.Lock()
+									statuses = append(statuses, NewLookupStatus(n))
+									m.Unlock()
+								}
 							}
 						}
-						if !alreadyIn && p.NodeID.Compare(n.NodeID) != 0 {
-							// if not in list, add it
-							statuses = append(statuses, NewLookupStatus(n))
-						}
+					} else {
+						m.Unlock()
 					}
 				}
 			}
-		}
+			wg.Done()
+		}()
 	}
+	// waiting for the ALPHA threads to finish
+	wg.Wait()
 	// get the K closest nodes
 
 	// sort the array with id closest to target first
 	sort.Slice(statuses, func(i, j int) bool {
-		// dist(i, target) < dist(j, target)
-		return statuses[i].NodeAddr.NodeID.XOR(*hash).Compare(
-			statuses[j].NodeAddr.NodeID.XOR(*hash)) < 0
+		// (!fail[i] && fail[j]) ||
+		//        (fail[i]==fail[j] && (dist(i, target) < dist(j, target)))
+		return (!statuses[i].Failed && statuses[j].Failed) &&
+			(statuses[i].Failed == statuses[j].Failed &&
+				statuses[i].NodeAddr.NodeID.XOR(*hash).Compare(
+					statuses[j].NodeAddr.NodeID.XOR(*hash)) < 0)
 	})
+
 	// number of elements to return
 	n := DHTK
 	if len(statuses) < DHTK {
@@ -164,47 +189,167 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 }
 
 // LookupRep handles a lookup request and reply to it
-func (p *Passtor) LookupRep(req *Message) {
+func (p *Passtor) LookupRep(req Message) {
 	KCloser := p.GetKCloser(req.LookupReq)
 
 	req.LookupReq = nil
-	req.Reply = true
 	req.LookupRep = &KCloser
-	p.SendMessage(*req, req.Sender.Addr, MINRETRIES)
+	p.SendMessage(req, req.Sender.Addr, MINRETRIES)
 }
 
-// GetKCloser get the K closer nodes to given hash
-func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
-	list := make([]NodeAddr, 0)
-	var bID uint16 = math.MaxUint16
+// HandleAllocation handles an allocation on the remote peer
+func (p *Passtor) HandleAllocation(msg Message) {
+	req := msg.AllocationReq
+	rep := p.Store(req.Data, req.Index, req.Repl)
 
-	if p.NodeID.Compare(*h) != 0 {
-		bID = p.GetBucketID(h)
+	msg.AllocationReq = nil
+	msg.AllocationRep = &rep
+	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
+}
 
-		b, ok := p.Buckets[bID]
-		if ok {
-			// bucket exists append all addresses in list
-			list = append(list, b.GetList()...)
-		}
+// AllocateToPeer allocate some data to a peer, returns true on success,
+// false if cannot reach peer or error
+func (p *Passtor) AllocateToPeer(id crypto.Hash, peer NodeAddr, index, repl uint32,
+	data Datastructure) bool {
+
+	msg := Message{AllocationReq: &AllocateMessage{
+		Data:  data,
+		Repl:  repl,
+		Index: index,
+	}}
+	rep := p.SendMessage(msg, peer.Addr, MINRETRIES)
+	return !(rep == nil) && rep.AllocationRep != nil &&
+		*rep.AllocationRep == NOERROR
+}
+
+// Allocate given data identified by the given id to the given replication
+// factor appropriate peers
+func (p *Passtor) Allocate(id crypto.Hash, repl uint32, data Datastructure) []NodeAddr {
+	peers := p.LookupReq(&id)
+
+	count := 0
+	allocations := make([]NodeAddr, 0)
+	m := sync.Mutex{}
+	wg := sync.WaitGroup{}
+
+	limit := int(repl)
+	if len(peers) < limit {
+		limit = len(peers)
 	}
-	if len(list) < DHTK {
-		// less than k elements in corresponding bucket
-		// complete with random elements
-		for id, bucket := range p.Buckets {
-			if id != bID {
-				for _, h := range bucket.GetList() {
-					list = append(list, h)
-					if len(list) >= DHTK {
+	wg.Add(limit)
+
+	for i := 0; i < limit; i++ {
+		go func() {
+			// while repl factor not match and not all peers tried
+			m.Lock()
+			for count < len(peers) {
+				// take an element in the list and increase the counter
+				peer := peers[count]
+				count++
+				index := uint32(len(allocations))
+				m.Unlock()
+				// allocation was a
+				if p.AllocateToPeer(id, peer, index, repl, data) {
+					m.Lock()
+					allocations = append(allocations, peer)
+					break
+				}
+				m.Lock()
+			}
+			m.Unlock()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	p.Printer.Print(fmt.Sprint("Allocated at:", allocations), V2)
+	return allocations
+}
+
+// HandleFetch searches for requested file, send it if it finds it
+func (p *Passtor) HandleFetch(msg Message) {
+	// TODO look for the data
+	// msg.FetchRep = nil if data not found
+
+	data := Datastructure{MyData: "hi there"}
+
+	// writing reply
+	msg.FetchReq = nil
+	msg.FetchRep = &data
+	// sending reply
+	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
+}
+
+// FetchDataFromPeer send fetch request to given peer, returns the reply of the
+// remote host
+func (p *Passtor) FetchDataFromPeer(h *crypto.Hash, peer NodeAddr) *Message {
+	return p.SendMessage(Message{FetchReq: h}, peer.Addr, MINRETRIES)
+}
+
+// FetchData request associated with given hash from the DHT
+func (p *Passtor) FetchData(h *crypto.Hash) *Datastructure {
+	peers := p.LookupReq(h)
+
+	count := 0
+	done := false
+	var data Datastructure
+	m := sync.Mutex{}
+
+	for i := 0; i < REPL; i++ {
+		go func() {
+			m.Lock()
+			for !done && count < len(peers) {
+				peer := peers[count]
+				count++
+				m.Unlock()
+				if rep := p.FetchDataFromPeer(h, peer); rep != nil {
+					if d := rep.FetchRep; d != nil {
+						m.Lock()
+						if !done {
+							// TODO check that data.repl <= REPL
+							done = true
+							data = *d
+						}
 						break
 					}
 				}
+
+				m.Lock()
 			}
-			if len(list) >= DHTK {
-				break
-			}
-		}
+			m.Unlock()
+		}()
 	}
-	return list
+	if !done {
+		return nil
+	}
+	return &data
+}
+
+// GetKCloser get the K closer nodes to given hash
+func (p *Passtor) GetKCloser(h *crypto.Hash) []NodeAddr {
+
+	if b, ok := p.Buckets[p.GetBucketID(h)]; ok && b.Size == DHTK {
+		// bucket exists append all addresses in list
+		return b.GetList()
+	}
+
+	list := make([]NodeAddr, 0)
+
+	for _, b := range p.Buckets {
+		list = append(list, b.GetList()...)
+	}
+
+	// sort the array with id closest to target first
+	sort.Slice(list, func(i, j int) bool {
+		// (i xor h) < (j xor h)
+		return list[i].NodeID.XOR(*h).Compare(list[j].NodeID.XOR(*h)) < 0
+	})
+
+	size := DHTK
+	if len(list) < DHTK {
+		size = len(list)
+	}
+
+	return list[:size]
 }
 
 // Insert a new NodeAddress in the Bucket, called only if bucket not full
@@ -215,17 +360,17 @@ func (b *Bucket) Insert(nodeAddr *NodeAddr) {
 		b.Mutex.Unlock()
 		return
 	}
-	new := BucketElement{
+	newE := BucketElement{
 		NodeAddr: nodeAddr,
 		Next:     b.Tail,
 		Prev:     nil,
 	}
 	if b.Size == 0 {
-		b.Head = &new
+		b.Head = &newE
 	} else {
-		b.Tail.Prev = &new
+		b.Tail.Prev = &newE
 	}
-	b.Tail = &new
+	b.Tail = &newE
 	b.Size++
 	b.Mutex.Unlock()
 }
