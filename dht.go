@@ -299,7 +299,7 @@ func (p *Passtor) FetchDataFromPeer(h *Hash, peer NodeAddr) *Message {
 func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	peers := p.LookupReq(h)
 
-	min := math.MaxUint32
+	min := 0
 	count := 0
 	done := false
 	replies := make([]Account, 0)
@@ -337,7 +337,8 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 		}()
 	}
 	if !done {
-		return nil
+		acc, _ := MostRepresented(replies, min)
+		return acc
 	}
 	return &account
 }
