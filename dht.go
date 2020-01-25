@@ -5,6 +5,7 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"time"
 
 	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
@@ -286,13 +287,15 @@ func (p *Passtor) FetchDataFromPeer(h *crypto.Hash, peer NodeAddr) *Message {
 }
 
 // FetchData request associated with given hash from the DHT
-func (p *Passtor) FetchData(h *crypto.Hash) *Datastructure {
+func (p *Passtor) FetchData(h *crypto.Hash, threshold float64) *Datastructure {
 	peers := p.LookupReq(h)
 
+	//min := math.MaxInt32
 	count := 0
 	done := false
 	var data Datastructure
 	m := sync.Mutex{}
+	// TODO wait for multiple replies
 
 	for i := 0; i < REPL; i++ {
 		go func() {
@@ -306,13 +309,13 @@ func (p *Passtor) FetchData(h *crypto.Hash) *Datastructure {
 						m.Lock()
 						if !done {
 							// TODO check that data.repl <= REPL
+							//min = int(math.Ceil(threshold * d.repl))
 							done = true
 							data = *d
 						}
 						break
 					}
 				}
-
 				m.Lock()
 			}
 			m.Unlock()
@@ -322,6 +325,30 @@ func (p *Passtor) FetchData(h *crypto.Hash) *Datastructure {
 		return nil
 	}
 	return &data
+}
+
+// Reallocate handles when a node (most probably just after joining the DHT)
+// gets allocated a file that was previously allocated to someone else
+func (p *Passtor) Reallocate() {
+	// TODO
+
+	// receive file to reallocate with reallocate flag on
+	// fetch data, and store the most replicated one
+}
+
+// Republish account information in the DHT, called periodically
+func (p *Passtor) Republish() {
+	// TODO
+
+	// gen random delay
+	t := 4 * time.Minute
+	time.Sleep(t * REPUBLISHINTERVAL * 2)
+	// sleep for x minutes, according to index and republish constant
+
+	// get associated data from passtor
+	// remove it from the passtor
+
+	// publish it
 }
 
 // GetKCloser get the K closer nodes to given hash

@@ -38,6 +38,8 @@ const (
 
 	// NOERROR string
 	NOERROR = ""
+	// REPUBLISHINTERVAL average time interval between republish
+	REPUBLISHINTERVAL = 5 * time.Minute
 )
 
 // MAXDISTANCE maximum distance between two hashes
