@@ -212,3 +212,41 @@ func DuplicateMap(data map[Hash]Login) map[Hash]Login {
 
 	return newMap
 }
+
+// MostRepresented returns the most represented verified (in the sense of signature equality)
+func MostRepresented(accounts []Account, min int) (*Account, bool) {
+
+	verified := make([]Account, 0)
+	for _, account := range accounts {
+		if account.Verify() {
+			verified = append(verified, account)
+		}
+	}
+
+	if len(verified) == 0 {
+		return nil, false
+	}
+
+	signatureCounts := make(map[Signature]accountCountPair)
+	for _, account := range verified {
+		if count, alreadyExists := signatureCounts[account.Signature]; alreadyExists {
+			signatureCounts[account.Signature] = accountCountPair{Account: count.Account, Count: count.Count + 1}
+		} else {
+			signatureCounts[account.Signature] = accountCountPair{Account: account, Count: 1}
+		}
+	}
+
+	var mostRepresentedAccount Account
+	mostRepresentedOccurences := 0
+	for _, count := range signatureCounts {
+		if count.Count > mostRepresentedOccurences {
+			mostRepresentedOccurences = count.Count
+			mostRepresentedAccount = count.Account
+		}
+	}
+
+	threshIsMet := mostRepresentedOccurences >= min
+
+	return &mostRepresentedAccount, threshIsMet
+
+}

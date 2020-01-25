@@ -320,21 +320,21 @@ func (account Account) GetLoginPassword(loginClient LoginClient, symmK Symmetric
 	return nil, errors.New("login does not exist")
 }
 
-func (accounts Accounts) Store(newAccount Account) error {
+func (accounts Accounts) Store(newAccount Account, repl uint32) error {
 	if !newAccount.Verify() {
 		return errors.New("account does not verify")
 	}
 
 	if oldAccount, ok := accounts[newAccount.ID]; ok {
-		if newAccount.Version <= oldAccount.Version {
+		if newAccount.Version <= oldAccount.Account.Version {
 			return errors.New("version is in the past, update local data")
 		}
-		if bytes.Compare(newAccount.Keys.PublicKey, oldAccount.Keys.PublicKey) != 0 {
+		if bytes.Compare(newAccount.Keys.PublicKey, oldAccount.Account.Keys.PublicKey) != 0 {
 			return errors.New("public key changed")
 		}
 	}
 
-	accounts[newAccount.ID] = newAccount
+	accounts[newAccount.ID] = AccountInfo{Account: newAccount, Repl: repl}
 
 	return nil
 }

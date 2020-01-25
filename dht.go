@@ -1,7 +1,9 @@
 package passtor
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"sync"
@@ -200,12 +202,8 @@ func (p *Passtor) LookupRep(req Message) {
 func (p *Passtor) HandleAllocation(msg Message) {
 	req := msg.AllocationReq
 
-	tmp := ""
-	// rep := p.Store(req.Account, req.Index, req.Repl) // TODO:
-	_ = p.Accounts.Store(req.Account.ToAccount()) // TODO: handle err
-
 	msg.AllocationReq = nil
-	msg.AllocationRep = &tmp
+	msg.AllocationRep = p.Accounts.Store(req.Account.ToAccount(), req.Repl)
 
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
@@ -213,16 +211,17 @@ func (p *Passtor) HandleAllocation(msg Message) {
 // AllocateToPeer allocate some data to a peer, returns true on success,
 // false if cannot reach peer or error
 func (p *Passtor) AllocateToPeer(id Hash, peer NodeAddr, index, repl uint32,
-	data AccountNetwork) bool {
+	data AccountNetwork) error {
 
-	msg := Message{AllocationReq: &AllocateMessage{
+	msg := Message{AllocationReq: &AccountMessage{
 		Account: data,
 		Repl:    repl,
-		Index:   index,
 	}}
 	rep := p.SendMessage(msg, peer.Addr, MINRETRIES)
-	return !(rep == nil) && rep.AllocationRep != nil &&
-		*rep.AllocationRep == NOERROR
+	if rep == nil {
+		return errors.New("No response from " + peer.Addr.String())
+	}
+	return rep.AllocationRep
 }
 
 // Allocate given data identified by the given id to the given replication
@@ -252,10 +251,12 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 				index := uint32(len(allocations))
 				m.Unlock()
 				// allocation was a
-				if p.AllocateToPeer(id, peer, index, repl, data) {
+				if err := p.AllocateToPeer(id, peer, index, repl, data); err == nil {
 					m.Lock()
 					allocations = append(allocations, peer)
 					break
+				} else {
+					p.Printer.ErrPrinter.Println(err.Error())
 				}
 				m.Lock()
 			}
@@ -273,11 +274,17 @@ func (p *Passtor) HandleFetch(msg Message) {
 	// TODO look for the data
 	// msg.FetchRep = nil if data not found
 
-	data := AccountNetwork{}
-
 	// writing reply
 	msg.FetchReq = nil
-	msg.FetchRep = &data
+
+	// if file is stored, return it
+	if data, ok := p.Accounts[*msg.LookupReq]; ok {
+		msg.FetchRep = &AccountMessage{
+			Account: data.Account.ToAccountNetwork(),
+			Repl:    data.Repl,
+		}
+	}
+
 	// sending reply
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
@@ -289,15 +296,15 @@ func (p *Passtor) FetchDataFromPeer(h *Hash, peer NodeAddr) *Message {
 }
 
 // FetchData request associated with given hash from the DHT
-func (p *Passtor) FetchData(h *Hash, threshold float64) *AccountNetwork {
+func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	peers := p.LookupReq(h)
 
-	//min := math.MaxInt32
+	min := math.MaxUint32
 	count := 0
 	done := false
-	var data AccountNetwork
+	replies := make([]Account, 0)
+	var account Account
 	m := sync.Mutex{}
-	// TODO wait for multiple replies
 
 	for i := 0; i < REPL; i++ {
 		go func() {
@@ -311,11 +318,17 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *AccountNetwork {
 						m.Lock()
 						if !done {
 							// TODO check that data.repl <= REPL
-							//min = int(math.Ceil(threshold * d.repl))
-							done = true
-							data = *d
+							min = int(math.Ceil(threshold * float64(d.Repl)))
+							replies = append(replies, d.Account.ToAccount())
+							if acc, ok := MostRepresented(replies, min); ok {
+								account = *acc
+								done = true
+								break
+							}
+							m.Unlock()
+						} else {
+							break
 						}
-						break
 					}
 				}
 				m.Lock()
@@ -326,7 +339,7 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *AccountNetwork {
 	if !done {
 		return nil
 	}
-	return &data
+	return &account
 }
 
 // Reallocate handles when a node (most probably just after joining the DHT)

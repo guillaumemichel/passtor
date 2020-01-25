@@ -53,10 +53,10 @@ type Message struct {
 	Ping          *bool       // non nil if message is a ping message
 	LookupReq     *Hash       // value to lookup
 	LookupRep     *[]NodeAddr // lookup response
-	AllocationReq *AllocateMessage
-	AllocationRep *string
+	AllocationReq *AccountMessage
+	AllocationRep error
 	FetchReq      *Hash
-	FetchRep      *AccountNetwork
+	FetchRep      *AccountMessage
 }
 
 // Bucket structure representing Kademlia k-buckets
@@ -154,8 +154,13 @@ type AccountNetwork struct {
 	Signature Signature
 }
 
+type AccountInfo struct {
+	Account Account
+	Repl    uint32
+}
+
 // Accounts is the collection of all created accounts.
-type Accounts map[Hash]Account
+type Accounts map[Hash]AccountInfo
 
 // ClientMessage represents a message than can be sent from a client to a node
 type ClientMessage struct {
@@ -170,9 +175,14 @@ type ServerResponse struct {
 	Data   *AccountNetwork
 }
 
-// AllocateMessage message requesting a node to allocate a file
-type AllocateMessage struct {
+// AccountMessage message requesting a node to allocate a file or fetching an
+// account info
+type AccountMessage struct {
 	Account AccountNetwork
-	Index   uint32
 	Repl    uint32
+}
+
+type accountCountPair struct {
+	Account Account
+	Count   int
 }
