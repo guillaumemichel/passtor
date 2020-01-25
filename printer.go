@@ -7,7 +7,7 @@ import (
 
 func checkErrMsg(err error, msg string) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: "+msg+"\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Error: "+msg+"\n")
 		os.Exit(1)
 	}
 }

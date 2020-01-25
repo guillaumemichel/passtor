@@ -1,7 +1,9 @@
 package passtor
 
 import (
+	"fmt"
 	"math"
+	"os"
 	"time"
 )
 
@@ -10,6 +12,8 @@ const (
 	DHTK = 5
 	// ALPHA DHT concurrency parameter
 	ALPHA = 2
+	// REPL replication factor
+	REPL = 3
 	// TIMEOUT value when waiting for an answer
 	TIMEOUT = 2 * time.Second
 	// MINRETRIES min number of attemps before giving up reaching an host
@@ -36,6 +40,8 @@ const (
 	V3 = 3
 	// TCPMAXPACKETSIZE is the largest size in bytes of a TCP packet
 	TCPMAXPACKETSIZE = 65535
+	// NOERROR string
+	NOERROR = ""
 )
 
 // MAXDISTANCE maximum distance between two hashes
@@ -46,5 +52,9 @@ func init() {
 	b := byte(math.MaxUint8)
 	for i := range MAXDISTANCE {
 		MAXDISTANCE[i] = b
+	}
+	if REPL > DHTK {
+		fmt.Println("Replication factor can't be larger than K")
+		os.Exit(1)
 	}
 }

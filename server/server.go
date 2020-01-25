@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
 	"go.dedis.ch/protobuf"
 )
 
