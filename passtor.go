@@ -23,8 +23,9 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 	}
 
 	// create the message counter used to associate reply with request
+	var counter uint64
 	c := MessageCounter{
-		IDCounter:  0,
+		IDCounter:  &counter,
 		Mutex:      &sync.Mutex{},
 		PendingMsg: make(map[uint64]*chan Message),
 	}
@@ -32,23 +33,33 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 	// create the passtor instance
 	p := Passtor{
 		Name:     name,
-		Messages: c,
+		Messages: &c,
 		PConn:    pConn,
 		Printer:  printer,
 		Buckets:  make(map[uint16]*Bucket),
 	}
 	// set the passtor identifier
 	p.SetIdentity()
+	// set self address
 	p.Addr = NodeAddr{Addr: *udpAddr, NodeID: p.NodeID}
+	// add self to routing table
+	p.AddPeerToBucket(p.Addr)
+
 	p.Printer.Print(fmt.Sprint("NodeID: ", p.NodeID), V3)
 	return p
+}
+
+// Store data in local memory, returns "" if no error, error message if any
+func (p *Passtor) Store(data Datastructure, index, repl uint32) string {
+	p.Printer.Print(data.MyData, V1)
+	return NOERROR
 }
 
 // GetMessageID get the next message ID, ids starting at 1
 func (c MessageCounter) GetMessageID() uint64 {
 	c.Mutex.Lock()
-	c.IDCounter++
-	id := c.IDCounter
+	*c.IDCounter++
+	id := *c.IDCounter
 	c.Mutex.Unlock()
 	return id
 }

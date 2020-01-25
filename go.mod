@@ -6,4 +6,6 @@ require (
 	github.com/sethvargo/go-diceware v0.2.0
 	go.dedis.ch/protobuf v1.0.11
 	golang.org/x/crypto v0.0.0-20200117160349-530e935923ad
+	go.dedis.ch/protobuf v1.0.11
+	golang.org/x/crypto v0.0.0-20190123085648-057139ce5d2b
 )

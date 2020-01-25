@@ -77,13 +77,19 @@ func (p *Passtor) HandleMessage(protobufed []byte) {
 		return
 	}
 
+	rep.Reply = true
 	if rep.Ping != nil {
 		//ping message
-		rep.Reply = true
 		p.SendMessage(rep, rep.Sender.Addr, MINRETRIES)
 	} else if rep.LookupReq != nil {
 		// reply to lookup
-		p.LookupRep(&rep)
+		p.LookupRep(rep)
+	} else if rep.AllocationReq != nil {
+		// allocate and reply to allocation request
+		p.HandleAllocation(rep)
+	} else if rep.FetchReq != nil {
+		// searches and reply with corresponding data
+		p.HandleFetch(rep)
 	}
 }
 
