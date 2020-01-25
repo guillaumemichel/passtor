@@ -1,6 +1,7 @@
 package passtor
 
 import (
+	"fmt"
 	"net"
 
 	"go.dedis.ch/protobuf"
@@ -93,20 +94,42 @@ func (p *Passtor) HandleMessage(protobufed []byte) {
 	}
 }
 
-// ListenToPasstors listen on the udp connection used to communicate with other
-// passtors, and distribute received messages to HandleMessage()
-func (p *Passtor) ListenToPasstors() {
-	buf := make([]byte, BUFFERSIZE)
+func (p *Passtor) HandleClientMessage(accounts Accounts, message ClientMessage) *ServerResponse {
 
-	for {
-		// read new message
-		m, _, err := p.PConn.ReadFromUDP(buf)
-		checkErr(err)
-
-		// copy the receive buffer to avoid that it is modified while being used
-		tmp := make([]byte, m)
-		copy(tmp, buf[:m])
-
-		go p.HandleMessage(tmp)
+	// Update or store new account
+	if message.Push != nil {
+		providers := p.Allocate(message.Push.ID, REPL, *message.Push)
+		if len(providers) == REPL {
+			return &ServerResponse{
+				Status: "ok",
+			}
+		}
+		msg := fmt.Sprintln("couldn't allocate data to ", REPL, "peers")
+		return &ServerResponse{
+			Status: "warning",
+			Debug:  &msg,
+		}
 	}
+
+	// Retrieve account
+	if message.Pull != nil {
+		// TODO:
+		//account, exists := accounts[*message.Pull]
+		account := p.FetchData(message.Pull, THRESHOLD)
+
+		if account != nil {
+			accountNetwork := account.ToAccountNetwork()
+			return &ServerResponse{
+				Status: "ok",
+				Data:   &accountNetwork,
+			}
+		}
+
+		msg := "This account does not exist"
+		return &ServerResponse{
+			Status: "error",
+			Debug:  &msg,
+		}
+	}
+	return nil
 }

@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"sync"
+
+	"go.dedis.ch/protobuf"
 )
 
 // NewPasstor creates and return a new Passtor instance
@@ -57,4 +59,52 @@ func (c MessageCounter) GetMessageID() uint64 {
 	id := *c.IDCounter
 	c.Mutex.Unlock()
 	return id
+}
+
+// ListenToPasstors listen on the udp connection used to communicate with other
+// passtors, and distribute received messages to HandleMessage()
+func (p *Passtor) ListenToPasstors() {
+	buf := make([]byte, BUFFERSIZE)
+
+	for {
+		// read new message
+		m, _, err := p.PConn.ReadFromUDP(buf)
+		checkErr(err)
+
+		// copy the receive buffer to avoid that it is modified while being used
+		tmp := make([]byte, m)
+		copy(tmp, buf[:m])
+
+		go p.HandleMessage(tmp)
+	}
+}
+
+func (p *Passtor) ListenToClients() {
+
+	server, err := net.Listen("tcp", ":8080")
+	accounts := make(Accounts)
+	if err != nil {
+		fmt.Println("Error while starting TCP server")
+		return
+	}
+	defer server.Close()
+
+	for {
+		conn, _ := server.Accept()
+
+		packetBytes := make([]byte, TCPMAXPACKETSIZE)
+		_, err := conn.Read(packetBytes)
+		if err != nil {
+			println("Unable to read packet from TCP connection")
+		}
+
+		var message ClientMessage
+		protobuf.Decode(packetBytes, &message)
+		response := p.HandleClientMessage(accounts, message)
+		responseBytes, err := protobuf.Encode(response)
+		if err != nil {
+			fmt.Println("Error while parsing response to be sent to client")
+		}
+		conn.Write(responseBytes)
+	}
 }
