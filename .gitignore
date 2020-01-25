@@ -2,4 +2,5 @@
 server/server
 client/client
 test
+.idea/
 todo

@@ -5,8 +5,6 @@ import (
 	"math"
 	"os"
 	"time"
-
-	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 const (
@@ -27,6 +25,11 @@ const (
 	// BYTELENGTH number of bits in a byte
 	BYTELENGTH uint16 = 8
 
+	// PASSPHRASELENGHT default length in words for a passphrase
+	PASSPHRASELENGHT = 8
+	// PASSPHRASESEP default word seperator in a passphrase
+	PASSPHRASESEP = "."
+
 	// V0 verbose level 0 (no output)
 	V0 = 0
 	// V1 verbose level 1 (normal output)
@@ -35,13 +38,14 @@ const (
 	V2 = 2
 	// V3 verbose level 3 (mode verbose++)
 	V3 = 3
-
+	// TCPMAXPACKETSIZE is the largest size in bytes of a TCP packet
+	TCPMAXPACKETSIZE = 65535
 	// NOERROR string
 	NOERROR = ""
 )
 
 // MAXDISTANCE maximum distance between two hashes
-var MAXDISTANCE crypto.Hash
+var MAXDISTANCE Hash
 
 func init() {
 	// set MAXDISTANCE
