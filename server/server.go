@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gitlab.gnugen.ch/gmichel/passtor"
+	"../../passtor"
 
 	"go.dedis.ch/protobuf"
 )

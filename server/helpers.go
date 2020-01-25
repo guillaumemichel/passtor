@@ -34,7 +34,7 @@ func MostRepresented(accounts []passtor.Account, min int) (*passtor.Account, boo
 
 	var mostRepresentedAccount passtor.Account
 	mostRepresentedOccurences := 0
-	for account, count := range signatureCounts {
+	for _, count := range signatureCounts {
 		if count.Count > mostRepresentedOccurences {
 			mostRepresentedOccurences = count.Count
 			mostRepresentedAccount = count.Account
