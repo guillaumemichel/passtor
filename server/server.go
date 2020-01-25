@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gitlab.gnugen.ch/gmichel/passtor"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"gitlab.gnugen.ch/gmichel/passtor"
 
 	"go.dedis.ch/protobuf"
 )
