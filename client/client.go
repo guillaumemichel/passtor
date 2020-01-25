@@ -3,13 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/rivo/tview"
 	"gitlab.gnugen.ch/gmichel/passtor"
 	"os"
 )
 
 func handleNewAccount() (*passtor.AccountClient, *passtor.Account) {
 
-	if PromptUser("It seems that you don't have a username yet. Would you like to create a new Passtör account? [y/n]", []string{"y", "n"}) == "n" {
+	if PromptUser("It seems that you don't have a username yet. Would you like to create a new Passtör account? [y/n]",
+		[]string{"y", "n"}) == "n" {
 		fmt.Println("Okay bye.")
 		os.Exit(0)
 	}
@@ -50,7 +52,167 @@ func queryAccount(ID, node string, completion func(*passtor.ServerResponse)) {
 	completion(Request(query, node))
 }
 
+func pushAccount(account passtor.Account, node string) {
+	accountNetwork := account.ToAccountNetwork()
+	message := &passtor.ClientMessage{
+		Push: &accountNetwork,
+	}
+
+	res := Request(message, node)
+	if res.Status != "ok" {
+		FailWithError("Error while pushing your account", res.Debug)
+	}
+}
+
+func createAccount(username string, masterpass string, node string) (passtor.AccountClient, passtor.Account) {
+	pk, sk, symmK, err := passtor.Generate()
+	AbortOnError(err, "Unable to generate keys")
+
+	accountClient := passtor.AccountClient{
+		ID: username,
+		Keys: passtor.KeysClient{
+			PublicKey:    pk,
+			PrivateKey:   sk,
+			SymmetricKey: symmK,
+		},
+	}
+
+	account, err := accountClient.ToEmptyAccount(passtor.GetSecret(username, masterpass))
+
+	pushAccount(account, node)
+
+	return accountClient, account
+}
+
+func downloadAccount(username string, masterpass string, node string) (passtor.AccountClient, passtor.Account) {
+	h := passtor.H([]byte(username))
+	query := &passtor.ClientMessage{
+		Pull: &h,
+	}
+
+	response := Request(query, node)
+
+	account := (*response.Data).ToAccount()
+
+	if response.Status == "ok" && response.Data != nil {
+		accountClient, err := account.ToAccountClient(username, passtor.GetSecret(username, masterpass))
+		AbortOnError(err, "Wrong password")
+
+		return accountClient, account
+	}
+
+	FailWithError("Error while fetching your account", response.Debug)
+
+	return passtor.AccountClient{}, passtor.Account{}
+}
+
+func goToLogins(app *tview.Application, accountClient passtor.AccountClient, account passtor.Account, node string) {
+	loginsScreen := tview.NewList()
+
+	logins, err := account.GetLoginClientList(accountClient.Keys.SymmetricKey)
+	if err != nil {
+		errMsg := err.Error()
+		FailWithError("Keys are fucked up...", &errMsg)
+	}
+
+	for _, loginClient := range logins {
+		loginsScreen.AddItem(loginClient.Service, loginClient.Username, '-', func() {
+			// TODO
+		})
+	}
+
+	loginsScreen.AddItem("new", "press n", 'n', func() {
+		goToLoginCreation(app, accountClient, account, node)
+	})
+	loginsScreen.AddItem("quit", "press q", 'q', func() {
+		app.Stop()
+	})
+
+	loginsScreen.SetBorder(true).SetTitle(" passtör ")
+
+	app.SetRoot(loginsScreen, true).SetFocus(loginsScreen)
+}
+
+func goToLoginCreation(app *tview.Application, accountClient passtor.AccountClient, account passtor.Account, node string) {
+	service := ""
+	username := ""
+
+	createLoginScreen := tview.NewForm().
+		AddInputField("service", "", 65, nil, func(serviceNew string) {
+			service = serviceNew
+		}).
+		AddInputField("username", "", 65, nil, func(usernameNew string) {
+			username = usernameNew
+		}).
+		AddButton("add", func() {
+			loginClient := passtor.LoginClient{
+				Service:  service,
+				Username: username,
+			}
+
+			account, err := account.AddLogin(loginClient, accountClient.Keys)
+			if err != nil {
+				errMsg := err.Error()
+				FailWithError("Keys are fucked up...", &errMsg)
+			}
+
+			pushAccount(account, node)
+			goToLogins(app, accountClient, account, node)
+		}).
+		AddButton("cancel", func() {
+			goToLogins(app, accountClient, account, node)
+		}).
+		SetButtonsAlign(tview.AlignCenter)
+
+	createLoginScreen.SetBorder(true).SetTitle(" passtör ")
+
+	app.SetRoot(createLoginScreen, true).SetFocus(createLoginScreen)
+}
+
 func main() {
+	app := tview.NewApplication()
+
+	NODE_GLOBAL := "127.0.0.1:8080"
+	USERNAME_GLOBAL := ""
+	MASTERPASS_GLOBAL := ""
+	ACCOUNTCLIENT_GLOBAL := passtor.AccountClient{}
+	ACCOUNT_GLOBAL := passtor.Account{}
+
+	loginScreen := tview.NewForm().
+		AddInputField("node", NODE_GLOBAL, 65, nil, func(node string) {
+			NODE_GLOBAL = node
+		}).
+		AddInputField("username", "", 65, nil, func(username string) {
+			USERNAME_GLOBAL = username
+		}).
+		AddPasswordField("masterpass", "", 65, '*', func(masterpass string) {
+			MASTERPASS_GLOBAL = masterpass
+		}).
+		AddButton("login", func() {
+			ACCOUNTCLIENT_GLOBAL, ACCOUNT_GLOBAL = downloadAccount(USERNAME_GLOBAL, MASTERPASS_GLOBAL, NODE_GLOBAL)
+			MASTERPASS_GLOBAL = ""
+
+			goToLogins(app, ACCOUNTCLIENT_GLOBAL, ACCOUNT_GLOBAL, NODE_GLOBAL)
+		}).
+		AddButton("create", func() {
+			ACCOUNTCLIENT_GLOBAL, ACCOUNT_GLOBAL = createAccount(USERNAME_GLOBAL, MASTERPASS_GLOBAL, NODE_GLOBAL)
+			MASTERPASS_GLOBAL = ""
+
+			goToLogins(app, ACCOUNTCLIENT_GLOBAL, ACCOUNT_GLOBAL, NODE_GLOBAL)
+		}).
+		AddButton("quit", func() {
+			app.Stop()
+		}).
+		SetButtonsAlign(tview.AlignCenter)
+
+	loginScreen.SetBorder(true).SetTitle(" passtör ")
+
+	if err := app.SetRoot(loginScreen, true).SetFocus(loginScreen).Run(); err != nil {
+		panic(err)
+	}
+}
+
+func mainOLD() {
 	node := flag.String("node", "127.0.0.1:8080", "IP and port of node to connect to")
 	username := flag.String("username", "", "client username")
 	flag.Parse()
@@ -58,8 +220,9 @@ func main() {
 	if *username == "" {
 
 		accountClient, account := handleNewAccount()
+		accountNetwork := account.ToAccountNetwork()
 		message := &passtor.ClientMessage{
-			Push: account,
+			Push: &accountNetwork,
 		}
 
 		res := Request(message, *node)
@@ -79,9 +242,11 @@ func main() {
 
 			if response.Status == "ok" && response.Data != nil {
 
+				account := (*response.Data).ToAccount()
+
 				masterPassword := PromptUser("Enter your master password:", nil)
 				secret := passtor.GetSecret(*username, masterPassword)
-				accountClient, err := response.Data.ToAccountClient(*username, secret)
+				accountClient, err := account.ToAccountClient(*username, secret)
 				AbortOnError(err, "Wrong password")
 				handleUpdates(accountClient)
 

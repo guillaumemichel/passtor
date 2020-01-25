@@ -506,3 +506,49 @@ func TestGetPassword(t *testing.T) {
 		t.Log(string(password))
 	}
 }
+
+func TestAccountNetworkIntegrity(t *testing.T) {
+	username, mpass := getUser()
+
+	secret := passtor.GetSecret(username, mpass)
+	pk, sk, symmK, _ := passtor.Generate()
+
+	keysClient := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: symmK,
+	}
+
+	accountClient := passtor.AccountClient{
+		ID:   username,
+		Keys: keysClient,
+	}
+
+	account, _ := accountClient.ToEmptyAccount(secret)
+
+	loginClientTwitter := passtor.LoginClient{
+		Service:  "twitter",
+		Username: "@trump_twitter",
+	}
+
+	loginClientMastodon := passtor.LoginClient{
+		Service:  "mastodon",
+		Username: "@trump_mastodon",
+	}
+
+	loginClientReddit := passtor.LoginClient{
+		Service:  "reddit",
+		Username: "@trump_reddit",
+	}
+
+	account, _ = account.AddLogin(loginClientTwitter, keysClient)
+	account, _ = account.AddLogin(loginClientMastodon, keysClient)
+	account, _ = account.AddLogin(loginClientReddit, keysClient)
+
+	accountNetwork := account.ToAccountNetwork()
+	accountBack := accountNetwork.ToAccount()
+
+	if !accountBack.Verify() {
+		t.Fail()
+	}
+}

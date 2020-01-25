@@ -202,3 +202,13 @@ func GetKeysSorted(data map[Hash]Login) []Hash {
 
 	return keysHash
 }
+
+func DuplicateMap(data map[Hash]Login) map[Hash]Login {
+	newMap := make(map[Hash]Login, len(data))
+
+	for k, v := range data {
+		newMap[k] = v
+	}
+
+	return newMap
+}

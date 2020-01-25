@@ -16,7 +16,7 @@ func handle(accounts passtor.Accounts, message passtor.ClientMessage) *passtor.S
 
 	// Update or store new account
 	if message.Push != nil {
-		err := accounts.Store(*message.Push)
+		err := accounts.Store((*message.Push).ToAccount())
 		if err == nil {
 			return &passtor.ServerResponse{
 				Status: "ok",
@@ -33,10 +33,13 @@ func handle(accounts passtor.Accounts, message passtor.ClientMessage) *passtor.S
 	// Retrieve account
 	if message.Pull != nil {
 		account, exists := accounts[*message.Pull]
+
+		accountNetwork := account.ToAccountNetwork()
+
 		if exists {
 			return &passtor.ServerResponse{
 				Status: "ok",
-				Data:   &account,
+				Data:   &accountNetwork,
 			}
 		}
 

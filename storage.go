@@ -215,7 +215,7 @@ func (account Account) AddLogin(loginClient LoginClient, keysClient KeysClient) 
 		return Account{}, errors.New("login already exists")
 	}
 
-	newLogins := account.Data
+	newLogins := DuplicateMap(account.Data)
 	newLogins[login.ID] = login
 
 	return Account{
@@ -237,7 +237,7 @@ func (account Account) DeleteLogin(ID Hash, sk PrivateKey) (Account, error) {
 		return Account{}, errors.New("login does not exist")
 	}
 
-	newLogins := account.Data
+	newLogins := DuplicateMap(account.Data)
 	delete(newLogins, ID)
 
 	return Account{
@@ -277,7 +277,7 @@ func (account Account) UpdateLoginPassword(ID Hash, keysClient KeysClient) (Acco
 		return Account{}, err
 	}
 
-	newLogins := account.Data
+	newLogins := DuplicateMap(account.Data)
 	newLogins[login.ID] = login
 
 	return Account{
@@ -337,4 +337,40 @@ func (accounts Accounts) Store(newAccount Account) error {
 	accounts[newAccount.ID] = newAccount
 
 	return nil
+}
+
+func (accountNetwork AccountNetwork) ToAccount() Account {
+	logins := make(map[Hash]Login, len(accountNetwork.Data))
+
+	for _, login := range accountNetwork.Data {
+		logins[login.ID] = login
+	}
+
+	return Account{
+		ID:        accountNetwork.ID,
+		Keys:      accountNetwork.Keys,
+		Version:   accountNetwork.Version,
+		Data:      logins,
+		MetaData:  accountNetwork.MetaData,
+		Signature: accountNetwork.Signature,
+	}
+}
+
+func (account Account) ToAccountNetwork() AccountNetwork {
+	logins := make([]Login, len(account.Data))
+
+	i := 0
+	for _, login := range account.Data {
+		logins[i] = login
+		i += 1
+	}
+
+	return AccountNetwork{
+		ID:        account.ID,
+		Keys:      account.Keys,
+		Version:   account.Version,
+		Data:      logins,
+		MetaData:  account.MetaData,
+		Signature: account.Signature,
+	}
 }

@@ -138,12 +138,22 @@ type Account struct {
 	Signature Signature
 }
 
+// AccountNetwork used to be able to encode to be sent over the network
+type AccountNetwork struct {
+	ID        Hash
+	Keys      Keys
+	Version   uint32
+	Data      []Login
+	MetaData  AccountMetaData
+	Signature Signature
+}
+
 // Accounts is the collection of all created accounts.
 type Accounts map[Hash]Account
 
 // ClientMessage represents a message than can be sent from a client to a node
 type ClientMessage struct {
-	Push *Account
+	Push *AccountNetwork
 	Pull *Hash
 }
 
@@ -151,5 +161,5 @@ type ClientMessage struct {
 type ServerResponse struct {
 	Status string
 	Debug  *string
-	Data   *Account
+	Data   *AccountNetwork
 }
