@@ -203,7 +203,8 @@ func (p *Passtor) HandleAllocation(msg Message) {
 	req := msg.AllocationReq
 
 	msg.AllocationReq = nil
-	msg.AllocationRep = p.Accounts.Store(req.Account.ToAccount(), req.Repl)
+	msg.AllocationRep = p.Store(req.Account.ToAccount(), req.Repl)
+	go p.Republish(p.Accounts[req.Account.ID])
 
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
@@ -299,12 +300,16 @@ func (p *Passtor) FetchDataFromPeer(h *Hash, peer NodeAddr) *Message {
 func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	peers := p.LookupReq(h)
 
-	min := 0
-	count := 0
+	var min int
+	var count int
 	done := false
 	replies := make([]Account, 0)
 	var account Account
 	m := sync.Mutex{}
+
+	// TODO
+	// waits for at least NREQ answers before calling MostRepresented(),
+	// take most frequent repl
 
 	for i := 0; i < REPL; i++ {
 		go func() {
@@ -317,7 +322,6 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 					if d := rep.FetchRep; d != nil {
 						m.Lock()
 						if !done {
-							// TODO check that data.repl <= REPL
 							min = int(math.Ceil(threshold * float64(d.Repl)))
 							replies = append(replies, d.Account.ToAccount())
 							if acc, ok := MostRepresented(replies, min); ok {
@@ -343,28 +347,36 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	return &account
 }
 
-// Reallocate handles when a node (most probably just after joining the DHT)
-// gets allocated a file that was previously allocated to someone else
-func (p *Passtor) Reallocate() {
-	// TODO
-
-	// receive file to reallocate with reallocate flag on
-	// fetch data, and store the most replicated one
-}
-
 // Republish account information in the DHT, called periodically
-func (p *Passtor) Republish() {
-	// TODO
+func (p *Passtor) Republish(account *AccountInfo) {
 
-	// gen random delay
-	t := 4 * time.Minute
-	time.Sleep(t * REPUBLISHINTERVAL * 2)
-	// sleep for x minutes, according to index and republish constant
+	// gen random delay between 0 and 2*repl*REPUBLISHINTERVAL minutes
+	delay := RandInt(int64(account.Repl) * int64(REPUBLISHINTERVAL) * 2 *
+		int64(time.Minute/time.Second))
+	// sleep for that time
+	time.Sleep(time.Duration(delay) * time.Second)
 
-	// get associated data from passtor
-	// remove it from the passtor
+	// check if version changed in the meantime, and republish only if it didn't
+	republish := false
+	p.Accounts[account.Account.ID].Mutex.Lock()
+	if p.Accounts[account.Account.ID].Account.Version == account.Account.Version {
+		// version did not change
+		republish = true
+	}
+	p.Accounts[account.Account.ID].Mutex.Unlock()
 
-	// publish it
+	if republish {
+		// remove account from the passtor
+		p.Delete(account.Account.ID)
+
+		// publish it
+		addrs := p.Allocate(account.Account.ID, account.Repl,
+			account.Account.ToAccountNetwork())
+		// check if allocated to enough peers
+		if len(addrs) != int(account.Repl) {
+			p.Printer.WPrint("Couldn't reallocate to enough peers", V2)
+		}
+	}
 }
 
 // GetKCloser get the K closer nodes to given hash

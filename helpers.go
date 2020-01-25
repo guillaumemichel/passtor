@@ -3,6 +3,7 @@ package passtor
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"math/big"
 	"net"
 	"sort"
 	"strings"
@@ -249,4 +250,13 @@ func MostRepresented(accounts []Account, min int) (*Account, bool) {
 
 	return &mostRepresentedAccount, threshIsMet
 
+}
+
+// RandInt generate a random int64 between 0 and given n
+func RandInt(n int64) int64 {
+	nBig, err := rand.Int(rand.Reader, big.NewInt(n))
+	if err != nil {
+		panic(err)
+	}
+	return nBig.Int64()
 }

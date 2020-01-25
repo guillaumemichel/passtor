@@ -13,7 +13,9 @@ const (
 	// ALPHA DHT concurrency parameter
 	ALPHA = 2
 	// REPL replication factor
-	REPL = 3
+	REPL = 5
+	// NREQ minimal number of response after Fetch
+	NREQ = 3
 	// TIMEOUT value when waiting for an answer
 	TIMEOUT = 2 * time.Second
 	// MINRETRIES min number of attemps before giving up reaching an host

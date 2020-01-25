@@ -3,6 +3,7 @@ package passtor
 import (
 	"bytes"
 	"errors"
+	"sync"
 )
 
 func (logInMetaData LoginMetaData) Hash() Hash {
@@ -320,23 +321,44 @@ func (account Account) GetLoginPassword(loginClient LoginClient, symmK Symmetric
 	return nil, errors.New("login does not exist")
 }
 
-func (accounts Accounts) Store(newAccount Account, repl uint32) error {
+// Store an account on a node
+func (p *Passtor) Store(newAccount Account, repl uint32) error {
 	if !newAccount.Verify() {
 		return errors.New("account does not verify")
 	}
 
-	if oldAccount, ok := accounts[newAccount.ID]; ok {
+	if oldAccount, ok := p.Accounts[newAccount.ID]; ok {
+		oldAccount.Mutex.Lock()
 		if newAccount.Version <= oldAccount.Account.Version {
+			oldAccount.Mutex.Unlock()
 			return errors.New("version is in the past, update local data")
 		}
 		if bytes.Compare(newAccount.Keys.PublicKey, oldAccount.Account.Keys.PublicKey) != 0 {
+			oldAccount.Mutex.Unlock()
 			return errors.New("public key changed")
 		}
+
+		oldAccount.Account = newAccount
+		oldAccount.Repl = repl
+
+		oldAccount.Mutex.Unlock()
+	} else {
+		p.Accounts[newAccount.ID] = &AccountInfo{
+			Account: newAccount,
+			Repl:    repl,
+			Mutex:   &sync.Mutex{},
+		}
 	}
-
-	accounts[newAccount.ID] = AccountInfo{Account: newAccount, Repl: repl}
-
 	return nil
+}
+
+// Delete an account from a node storage
+func (p *Passtor) Delete(id Hash) {
+	m := p.Accounts[id].Mutex
+	//p.Accounts[id].Mutex.Lock()
+	m.Lock()
+	delete(p.Accounts, id)
+	m.Unlock()
 }
 
 func (accountNetwork AccountNetwork) ToAccount() Account {

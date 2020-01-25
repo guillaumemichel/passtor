@@ -163,17 +163,17 @@ func TestStoreNewAccount(t *testing.T) {
 		t.Fail()
 	}
 
-	accounts := make(passtor.Accounts)
+	accounts := passtor.NewPasstor("issou", "127.0.0.1:5000", 1)
 
 	err := accounts.Store(account, 5)
 
 	if err != nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Account.Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 }
@@ -201,14 +201,14 @@ func TestStoreIncorrectAccountFails(t *testing.T) {
 		t.Fail()
 	}
 
-	accounts := make(passtor.Accounts)
+	accounts := passtor.NewPasstor("issou", "127.0.0.1:5000", 1)
 
 	err := accounts.Store(account, 5)
 
 	if err == nil {
 		t.Fail()
 	}
-	if len(accounts) != 0 {
+	if len(accounts.Accounts) != 0 {
 		t.Fail()
 	}
 }
@@ -235,17 +235,17 @@ func TestStoreUpdateOldAccount(t *testing.T) {
 		t.Fail()
 	}
 
-	accounts := make(passtor.Accounts)
+	accounts := passtor.NewPasstor("issou", "127.0.0.1:5000", 1)
 
 	err := accounts.Store(account, 5)
 
 	if err != nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Account.Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 
@@ -254,10 +254,10 @@ func TestStoreUpdateOldAccount(t *testing.T) {
 	if err == nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Account.Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 
@@ -269,10 +269,10 @@ func TestStoreUpdateOldAccount(t *testing.T) {
 	if err == nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Account.Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 }

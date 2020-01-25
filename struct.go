@@ -157,10 +157,11 @@ type AccountNetwork struct {
 type AccountInfo struct {
 	Account Account
 	Repl    uint32
+	Mutex   *sync.Mutex
 }
 
 // Accounts is the collection of all created accounts.
-type Accounts map[Hash]AccountInfo
+type Accounts map[Hash]*AccountInfo
 
 // ClientMessage represents a message than can be sent from a client to a node
 type ClientMessage struct {
