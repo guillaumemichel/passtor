@@ -106,8 +106,56 @@ func downloadAccount(username string, masterpass string, node string) (passtor.A
 	return passtor.AccountClient{}, passtor.Account{}
 }
 
+func goToLogin(app *tview.Application, accountClient passtor.AccountClient, account passtor.Account,
+	loginClient passtor.LoginClient, node string) {
+
+	password, err := account.GetLoginPassword(loginClient, accountClient.Keys.SymmetricKey)
+	if err != nil {
+		errMsg := err.Error()
+		FailWithError("Password is fucked up...", &errMsg)
+	}
+
+	loginDisplay := tview.NewModal().
+		SetText(loginClient.Service + "\n\n" + loginClient.Username + "\n\n" + string(password)).
+		AddButtons([]string{"back", "change", "delete"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "back" {
+				goToLogins(app, accountClient, account, node)
+			} else if buttonLabel == "change" {
+				account, err := account.UpdateLoginPassword(loginClient.GetID(accountClient.Keys.SymmetricKey), accountClient.Keys)
+				if err != nil {
+					errMsg := err.Error()
+					FailWithError("Update is fucked up...", &errMsg)
+				}
+
+				pushAccount(account, node)
+				goToLogin(app, accountClient, account, loginClient, node)
+			} else if buttonLabel == "delete" {
+				account, err := account.DeleteLogin(loginClient.GetID(accountClient.Keys.SymmetricKey), accountClient.Keys.PrivateKey)
+				if err != nil {
+					errMsg := err.Error()
+					FailWithError("Delete is fucked up...", &errMsg)
+				}
+
+				pushAccount(account, node)
+				goToLogins(app, accountClient, account, node)
+			}
+		})
+
+	loginDisplay.SetBorder(true).SetTitle(" passtör ")
+
+	app.SetRoot(loginDisplay, true).SetFocus(loginDisplay)
+}
+
 func goToLogins(app *tview.Application, accountClient passtor.AccountClient, account passtor.Account, node string) {
 	loginsScreen := tview.NewList()
+
+	loginsScreen.AddItem("new", "press n", 'n', func() {
+		goToLoginCreation(app, accountClient, account, node)
+	})
+	loginsScreen.AddItem("quit", "press q", 'q', func() {
+		app.Stop()
+	})
 
 	logins, err := account.GetLoginClientList(accountClient.Keys.SymmetricKey)
 	if err != nil {
@@ -116,17 +164,15 @@ func goToLogins(app *tview.Application, accountClient passtor.AccountClient, acc
 	}
 
 	for _, loginClient := range logins {
+		tmpLoginClient := passtor.LoginClient{
+			Service:  string([]byte(loginClient.Service)),
+			Username: string([]byte(loginClient.Username)),
+		}
+
 		loginsScreen.AddItem(loginClient.Service, loginClient.Username, '-', func() {
-			// TODO
+			goToLogin(app, accountClient, account, tmpLoginClient, node)
 		})
 	}
-
-	loginsScreen.AddItem("new", "press n", 'n', func() {
-		goToLoginCreation(app, accountClient, account, node)
-	})
-	loginsScreen.AddItem("quit", "press q", 'q', func() {
-		app.Stop()
-	})
 
 	loginsScreen.SetBorder(true).SetTitle(" passtör ")
 
