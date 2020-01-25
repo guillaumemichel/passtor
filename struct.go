@@ -4,14 +4,12 @@ import (
 	"log"
 	"net"
 	"sync"
-
-	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 // NodeAddr node address entry in the k-bucket, node udp ip and port, and nodeID
 type NodeAddr struct {
 	Addr   net.UDPAddr // udp address (ip + port) of the node
-	NodeID crypto.Hash // nodeID of that node
+	NodeID Hash        // nodeID of that node
 }
 
 // MessageCounter structure containing message indexing tools
@@ -31,8 +29,8 @@ type Printer struct {
 
 // Passtor instance
 type Passtor struct {
-	Name   string      // name of the passtor instance
-	NodeID crypto.Hash // hash of the name of the passtor, node identifier
+	Name   string // name of the passtor instance
+	NodeID Hash   // hash of the name of the passtor, node identifier
 
 	PConn *net.UDPConn // udp socket to communicate with other passtors
 	CConn *net.UDPConn // udp socket to communicate with clients
@@ -43,20 +41,22 @@ type Passtor struct {
 	Buckets map[uint16]*Bucket // k-buckets used in the DHT
 
 	Printer Printer // passtor console printer
+
+	Accounts Accounts
 }
 
 // Message structure defining messages exchanged between passtors
 type Message struct {
-	ID            uint64       // message ID
-	Reply         bool         // message is a reply
-	Sender        *NodeAddr    // sender identity
-	Ping          *bool        // non nil if message is a ping message
-	LookupReq     *crypto.Hash // value to lookup
-	LookupRep     *[]NodeAddr  // lookup response
+	ID            uint64      // message ID
+	Reply         bool        // message is a reply
+	Sender        *NodeAddr   // sender identity
+	Ping          *bool       // non nil if message is a ping message
+	LookupReq     *Hash       // value to lookup
+	LookupRep     *[]NodeAddr // lookup response
 	AllocationReq *AllocateMessage
 	AllocationRep *string
-	FetchReq      *crypto.Hash
-	FetchRep      *Datastructure
+	FetchReq      *Hash
+	FetchRep      *AccountNetwork
 }
 
 // Bucket structure representing Kademlia k-buckets
@@ -81,14 +81,98 @@ type LookupStatus struct {
 	Failed   bool
 }
 
-// AllocateMessage message requesting a node to allocate a file
-type AllocateMessage struct {
-	Data  Datastructure
-	Index uint32
-	Repl  uint32
+// LoginMetaData for the Login structure.
+type LoginMetaData struct {
+	ServiceNonce  Nonce
+	UsernameNonce Nonce
+	PasswordNonce Nonce
 }
 
-// Datastructure temporary structre of things that will be written somewhere
-type Datastructure struct {
-	MyData string
+// Credentials for a given service.
+type Credentials struct {
+	Username EncryptedData
+	Password EncryptedData
+}
+
+// LoginClient used to display restricted plaintext info about a login
+type LoginClient struct {
+	Service  string
+	Username string
+}
+
+// Login is a tuple of credentials and corresponding metadata to ensure validity.
+type Login struct {
+	ID          Hash
+	Service     EncryptedData
+	Credentials Credentials
+	MetaData    LoginMetaData
+}
+
+// KeysClient used only client side to store the keys used to sign or en/de-crypt data.
+type KeysClient struct {
+	PublicKey    PublicKey
+	PrivateKey   PrivateKey
+	SymmetricKey SymmetricKey
+}
+
+// Keys used to encrypt, or sign data.
+type Keys struct {
+	PublicKey      PublicKey
+	PrivateKeySeed EncryptedData
+	SymmetricKey   EncryptedData
+}
+
+// AccountMetaData for the Account structure.
+type AccountMetaData struct {
+	PrivateKeySeedNonce Nonce
+	SymmetricKeyNonce   Nonce
+}
+
+// Account used only client side to store info about the current user.
+type AccountClient struct {
+	ID   string
+	Keys KeysClient
+}
+
+// Account groups everything that has been stored by a single user.
+type Account struct {
+	ID        Hash
+	Keys      Keys
+	Version   uint32
+	Data      map[Hash]Login
+	MetaData  AccountMetaData
+	Signature Signature
+}
+
+// AccountNetwork used to be able to encode to be sent over the network
+type AccountNetwork struct {
+	ID        Hash
+	Keys      Keys
+	Version   uint32
+	Data      []Login
+	MetaData  AccountMetaData
+	Signature Signature
+}
+
+// Accounts is the collection of all created accounts.
+type Accounts map[Hash]Account
+
+// ClientMessage represents a message than can be sent from a client to a node
+type ClientMessage struct {
+	Push *AccountNetwork
+	Pull *Hash
+}
+
+// ServerResponse represents a response from a node to a client
+type ServerResponse struct {
+	Status string
+	Debug  *string
+	Data   *AccountNetwork
+}
+
+// AllocateMessage message requesting a node to allocate a file
+type AllocateMessage struct {
+	Account AccountNetwork
+	Index   uint32
+	Repl    uint32
 }

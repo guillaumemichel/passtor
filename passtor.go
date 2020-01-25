@@ -49,12 +49,6 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 	return p
 }
 
-// Store data in local memory, returns "" if no error, error message if any
-func (p *Passtor) Store(data Datastructure, index, repl uint32) string {
-	p.Printer.Print(data.MyData, V1)
-	return NOERROR
-}
-
 // GetMessageID get the next message ID, ids starting at 1
 func (c MessageCounter) GetMessageID() uint64 {
 	c.Mutex.Lock()

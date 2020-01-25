@@ -6,8 +6,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"gitlab.gnugen.ch/gmichel/passtor/crypto"
 )
 
 // JoinDHT passtor join the DHT
@@ -42,9 +40,9 @@ func (p *Passtor) Ping(peer net.UDPAddr, retries int) bool {
 }
 
 // GetBucketID get the bucket identifier in which val belongs
-func (p *Passtor) GetBucketID(val *crypto.Hash) uint16 {
+func (p *Passtor) GetBucketID(val *Hash) uint16 {
 	if p.NodeID.Compare(*val) == 0 {
-		return crypto.HASHSIZE
+		return HASHSIZE
 	}
 	dist := p.NodeID.XOR(*val)
 
@@ -100,7 +98,7 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 }
 
 // LookupReq lookup a hash
-func (p *Passtor) LookupReq(hash *crypto.Hash) []NodeAddr {
+func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 	// set initial lookup peers
 	initial := p.GetKCloser(hash)
 	statuses := make([]*LookupStatus, len(initial))
@@ -201,22 +199,26 @@ func (p *Passtor) LookupRep(req Message) {
 // HandleAllocation handles an allocation on the remote peer
 func (p *Passtor) HandleAllocation(msg Message) {
 	req := msg.AllocationReq
-	rep := p.Store(req.Data, req.Index, req.Repl)
+
+	tmp := ""
+	// rep := p.Store(req.Account, req.Index, req.Repl) // TODO:
+	_ = p.Accounts.Store(req.Account.ToAccount()) // TODO: handle err
 
 	msg.AllocationReq = nil
-	msg.AllocationRep = &rep
+	msg.AllocationRep = &tmp
+
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
 
 // AllocateToPeer allocate some data to a peer, returns true on success,
 // false if cannot reach peer or error
-func (p *Passtor) AllocateToPeer(id crypto.Hash, peer NodeAddr, index, repl uint32,
-	data Datastructure) bool {
+func (p *Passtor) AllocateToPeer(id Hash, peer NodeAddr, index, repl uint32,
+	data AccountNetwork) bool {
 
 	msg := Message{AllocationReq: &AllocateMessage{
-		Data:  data,
-		Repl:  repl,
-		Index: index,
+		Account: data,
+		Repl:    repl,
+		Index:   index,
 	}}
 	rep := p.SendMessage(msg, peer.Addr, MINRETRIES)
 	return !(rep == nil) && rep.AllocationRep != nil &&
@@ -225,7 +227,7 @@ func (p *Passtor) AllocateToPeer(id crypto.Hash, peer NodeAddr, index, repl uint
 
 // Allocate given data identified by the given id to the given replication
 // factor appropriate peers
-func (p *Passtor) Allocate(id crypto.Hash, repl uint32, data Datastructure) []NodeAddr {
+func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr {
 	peers := p.LookupReq(&id)
 
 	count := 0
@@ -271,7 +273,7 @@ func (p *Passtor) HandleFetch(msg Message) {
 	// TODO look for the data
 	// msg.FetchRep = nil if data not found
 
-	data := Datastructure{MyData: "hi there"}
+	data := AccountNetwork{}
 
 	// writing reply
 	msg.FetchReq = nil
@@ -282,18 +284,18 @@ func (p *Passtor) HandleFetch(msg Message) {
 
 // FetchDataFromPeer send fetch request to given peer, returns the reply of the
 // remote host
-func (p *Passtor) FetchDataFromPeer(h *crypto.Hash, peer NodeAddr) *Message {
+func (p *Passtor) FetchDataFromPeer(h *Hash, peer NodeAddr) *Message {
 	return p.SendMessage(Message{FetchReq: h}, peer.Addr, MINRETRIES)
 }
 
 // FetchData request associated with given hash from the DHT
-func (p *Passtor) FetchData(h *crypto.Hash, threshold float64) *Datastructure {
+func (p *Passtor) FetchData(h *Hash, threshold float64) *AccountNetwork {
 	peers := p.LookupReq(h)
 
 	//min := math.MaxInt32
 	count := 0
 	done := false
-	var data Datastructure
+	var data AccountNetwork
 	m := sync.Mutex{}
 	// TODO wait for multiple replies
 
@@ -352,7 +354,7 @@ func (p *Passtor) Republish() {
 }
 
 // GetKCloser get the K closer nodes to given hash
-func (p *Passtor) GetKCloser(h *crypto.Hash) []NodeAddr {
+func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
 
 	if b, ok := p.Buckets[p.GetBucketID(h)]; ok && b.Size == DHTK {
 		// bucket exists append all addresses in list

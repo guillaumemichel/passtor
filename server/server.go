@@ -3,12 +3,86 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gitlab.gnugen.ch/gmichel/passtor"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"gitlab.gnugen.ch/gmichel/passtor"
+	"go.dedis.ch/protobuf"
 )
+
+func handle(accounts passtor.Accounts, message passtor.ClientMessage) *passtor.ServerResponse {
+
+	// Update or store new account
+	if message.Push != nil {
+		err := accounts.Store((*message.Push).ToAccount())
+		if err == nil {
+			return &passtor.ServerResponse{
+				Status: "ok",
+			}
+		}
+
+		msg := err.Error()
+		return &passtor.ServerResponse{
+			Status: "error",
+			Debug:  &msg,
+		}
+	}
+
+	// Retrieve account
+	if message.Pull != nil {
+		account, exists := accounts[*message.Pull]
+
+		accountNetwork := account.ToAccountNetwork()
+
+		if exists {
+			return &passtor.ServerResponse{
+				Status: "ok",
+				Data:   &accountNetwork,
+			}
+		}
+
+		msg := "This account does not exist"
+		return &passtor.ServerResponse{
+			Status: "error",
+			Debug:  &msg,
+		}
+
+	}
+
+	return nil
+
+}
+
+func listenToClients() {
+
+	server, err := net.Listen("tcp", ":8080")
+	accounts := make(passtor.Accounts)
+	if err != nil {
+		fmt.Println("Error while starting TCP server")
+		return
+	}
+	defer server.Close()
+
+	for {
+		conn, _ := server.Accept()
+
+		packetBytes := make([]byte, passtor.TCPMAXPACKETSIZE)
+		_, err := conn.Read(packetBytes)
+		if err != nil {
+			println("Unable to read packet from TCP connection")
+		}
+
+		var message passtor.ClientMessage
+		protobuf.Decode(packetBytes, &message)
+		response := handle(accounts, message)
+		responseBytes, err := protobuf.Encode(response)
+		if err != nil {
+			fmt.Println("Error while parsing response to be sent to client")
+		}
+		conn.Write(responseBytes)
+	}
+}
 
 func main() {
 
@@ -27,6 +101,7 @@ func main() {
 
 	p := passtor.NewPasstor(*name, *addr, *verbose)
 	go p.ListenToPasstors()
+	go listenToClients()
 
 	p.JoinDHT(passtor.ParsePeers(*peers))
 
