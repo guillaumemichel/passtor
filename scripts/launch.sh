@@ -15,6 +15,6 @@ while [ $counter -lt $n ]
 do
 	let port=6000+$counter
 	name='Passtor'$counter
-	nohup tilix -t $name -s $name --window-style=disable-csd-hide-toolbar -e bash -c './server -name '$name' -addr 127.0.0.1:'$port' -peers 127.0.0.1:6000 -v '$debug'; exec bash' > /dev/null 2>&1 &
+	./server -name $name -addr 127.0.0.1:$port -peers 127.0.0.1:6000 -v $debug > '../scripts/logs/'$name'.txt' 2>&1 &
 	((counter++))
 done
