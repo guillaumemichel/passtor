@@ -6,6 +6,8 @@ mkdir logs
 cd ../server
 go build
 
+pkill -f server 2> /dev/null
+
 counter=0
 n=${1-7}
 debug=${2-1}
