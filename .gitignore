@@ -1,6 +1,7 @@
 
 server/server
 client/client
+scripts/logs/
 test
 .idea/
 todo
