@@ -185,7 +185,7 @@ func main() {
 
 	client = passtor.Client{
 		App:           tview.NewApplication(),
-		Node:          "127.0.0.1:8080",
+		Node:          "127.0.0.1:6000",
 		AccountClient: passtor.AccountClient{},
 		Account:       passtor.Account{},
 	}
