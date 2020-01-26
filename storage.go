@@ -331,7 +331,7 @@ func (p *Passtor) Store(newAccount Account, repl uint32) error {
 		oldAccount.Mutex.Lock()
 		if newAccount.Version <= oldAccount.Account.Version {
 			oldAccount.Mutex.Unlock()
-			return errors.New("version is in the past, update local data")
+			return errors.New(ALREADYSTORED)
 		}
 		if bytes.Compare(newAccount.Keys.PublicKey, oldAccount.Account.Keys.PublicKey) != 0 {
 			oldAccount.Mutex.Unlock()

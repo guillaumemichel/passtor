@@ -98,6 +98,7 @@ func (p *Passtor) HandleClientMessage(accounts Accounts, message ClientMessage) 
 
 	// Update or store new account
 	if message.Push != nil {
+		p.Printer.Print(fmt.Sprint("Push request ", message.Push.ID), V2)
 		providers := p.Allocate(message.Push.ID, REPL, *message.Push)
 		if len(providers) == REPL {
 			return &ServerResponse{
@@ -113,6 +114,7 @@ func (p *Passtor) HandleClientMessage(accounts Accounts, message ClientMessage) 
 
 	// Retrieve account
 	if message.Pull != nil {
+		p.Printer.Print(fmt.Sprint("Pull request ", *message.Pull), V2)
 		account := p.FetchData(message.Pull, THRESHOLD)
 
 		if account != nil {

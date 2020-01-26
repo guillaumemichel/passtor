@@ -48,8 +48,13 @@ const (
 	REPUBLISHINTERVAL = 5 * time.Minute
 )
 
+// Errors
+
 // NOERROR string
 var NOERROR = ""
+
+// ALREADYSTORED error string
+var ALREADYSTORED = "Account already stored and up-to-date"
 
 // MAXDISTANCE maximum distance between two hashes
 var MAXDISTANCE Hash

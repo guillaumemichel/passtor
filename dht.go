@@ -262,7 +262,8 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 				index := uint32(len(allocations))
 				m.Unlock()
 				// allocation was a
-				if err := p.AllocateToPeer(id, peer, index, repl, data); err == nil {
+				err := p.AllocateToPeer(id, peer, index, repl, data)
+				if err == nil || err.Error() == ALREADYSTORED {
 					m.Lock()
 					allocations = append(allocations, peer)
 					break
@@ -329,7 +330,6 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 				if rep := p.FetchDataFromPeer(h, peer); rep != nil {
 					if d := rep.FetchRep; d != nil {
 						m.Lock()
-						p.Printer.Print(fmt.Sprint(d), V2)
 						if !done {
 							min = int(math.Ceil(threshold * float64(d.Repl)))
 							replies = append(replies, d.Account.ToAccount())
