@@ -113,8 +113,6 @@ func (p *Passtor) HandleClientMessage(accounts Accounts, message ClientMessage) 
 
 	// Retrieve account
 	if message.Pull != nil {
-		// TODO:
-		//account, exists := accounts[*message.Pull]
 		account := p.FetchData(message.Pull, THRESHOLD)
 
 		if account != nil {

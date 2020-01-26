@@ -88,7 +88,7 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 	} else if b.Size < DHTK {
 		// element not in bucket && bucket not full, adding el to bucket
 		b.Insert(&addr)
-		p.Printer.Print(fmt.Sprint("Added ", addr, " to bucket ", bucket), V2)
+		p.Printer.Print(fmt.Sprint("Added ", addr, " to bucket ", bucket), V3)
 	} else {
 		// if the tail of the bucket does not reply the ping request, replace
 		// it by the new address
@@ -313,12 +313,13 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	replies := make([]Account, 0)
 	var account Account
 	m := sync.Mutex{}
+	wg := sync.WaitGroup{}
 
 	// TODO
 	// waits for at least NREQ answers before calling MostRepresented(),
 	// take most frequent repl
-
 	for i := 0; i < REPL; i++ {
+		wg.Add(1)
 		go func() {
 			m.Lock()
 			for !done && count < len(peers) {
@@ -328,6 +329,7 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 				if rep := p.FetchDataFromPeer(h, peer); rep != nil {
 					if d := rep.FetchRep; d != nil {
 						m.Lock()
+						p.Printer.Print(fmt.Sprint(d), V2)
 						if !done {
 							min = int(math.Ceil(threshold * float64(d.Repl)))
 							replies = append(replies, d.Account.ToAccount())
@@ -345,8 +347,10 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 				m.Lock()
 			}
 			m.Unlock()
+			wg.Done()
 		}()
 	}
+	wg.Wait()
 	if !done {
 		acc, _ := MostRepresented(replies, min)
 		return acc
