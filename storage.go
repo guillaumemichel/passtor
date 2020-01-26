@@ -295,8 +295,8 @@ func (account Account) GetLoginClientList(symmK SymmetricKey) ([]LoginClient, er
 	list := make([]LoginClient, len(account.Data))
 
 	i := 0
-	for _, login := range account.Data {
-		loginClient, err := login.ToLoginClient(symmK)
+	for _, id := range GetKeysSorted(account.Data) {
+		loginClient, err := account.Data[id].ToLoginClient(symmK)
 		if err != nil {
 			return nil, err
 		}
