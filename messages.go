@@ -113,9 +113,6 @@ func (p *Passtor) HandleClientMessage(accounts Accounts, message ClientMessage) 
 
 	// Retrieve account
 	if message.Pull != nil {
-		p.Printer.Print("Got pull request", V2)
-		// TODO:
-		//account, exists := accounts[*message.Pull]
 		account := p.FetchData(message.Pull, THRESHOLD)
 
 		if account != nil {

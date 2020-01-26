@@ -282,17 +282,13 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 
 // HandleFetch searches for requested file, send it if it finds it
 func (p *Passtor) HandleFetch(msg Message) {
-	p.Printer.Print("Got fetch req", V2)
 
 	// if file is stored, return it
 	if data, ok := p.Accounts[*msg.FetchReq]; ok {
-		p.Printer.Print("I got it", V2)
 		msg.FetchRep = &AccountMessage{
 			Account: data.Account.ToAccountNetwork(),
 			Repl:    data.Repl,
 		}
-	} else {
-		p.Printer.Print("didn't found the data", V2)
 	}
 	// writing reply
 	msg.FetchReq = nil
@@ -322,8 +318,6 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	// TODO
 	// waits for at least NREQ answers before calling MostRepresented(),
 	// take most frequent repl
-	p.Printer.Print("Fetching data...", V2)
-
 	for i := 0; i < REPL; i++ {
 		wg.Add(1)
 		go func() {
@@ -337,15 +331,9 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 						m.Lock()
 						p.Printer.Print(fmt.Sprint(d), V2)
 						if !done {
-							p.Printer.Print("not done yet", V2)
 							min = int(math.Ceil(threshold * float64(d.Repl)))
-							p.Printer.Print(fmt.Sprint("min:", min), V2)
-							p.Printer.Print(fmt.Sprint("cast min:", int(math.Ceil(threshold*float64(d.Repl)))), V2)
-							p.Printer.Print(fmt.Sprint("ceil min:", math.Ceil(threshold*float64(d.Repl))), V2)
-							p.Printer.Print(fmt.Sprint("float min:", threshold*float64(d.Repl)), V2)
 							replies = append(replies, d.Account.ToAccount())
 							if acc, ok := MostRepresented(replies, min); ok {
-								p.Printer.Print("done now", V2)
 								account = *acc
 								done = true
 								break
@@ -365,11 +353,8 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	wg.Wait()
 	if !done {
 		acc, _ := MostRepresented(replies, min)
-		p.Printer.Print(fmt.Sprint("min:", min), V2)
-		p.Printer.Print(fmt.Sprint(acc), V2)
 		return acc
 	}
-	p.Printer.Print(fmt.Sprint("Account:", account), V2)
 	return &account
 }
 
