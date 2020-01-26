@@ -1,10 +1,13 @@
 package passtor
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"sync"
+	"time"
 )
 
 // JoinDHT passtor join the DHT
@@ -85,7 +88,7 @@ func (p *Passtor) AddPeerToBucket(addr NodeAddr) {
 	} else if b.Size < DHTK {
 		// element not in bucket && bucket not full, adding el to bucket
 		b.Insert(&addr)
-		p.Printer.Print(fmt.Sprint("Added ", addr, " to bucket ", bucket), V2)
+		p.Printer.Print(fmt.Sprint("Added ", addr, " to bucket ", bucket), V3)
 	} else {
 		// if the tail of the bucket does not reply the ping request, replace
 		// it by the new address
@@ -199,12 +202,15 @@ func (p *Passtor) LookupRep(req Message) {
 func (p *Passtor) HandleAllocation(msg Message) {
 	req := msg.AllocationReq
 
-	tmp := ""
-	// rep := p.Store(req.Account, req.Index, req.Repl) // TODO:
-	_ = p.Accounts.Store(req.Account.ToAccount()) // TODO: handle err
-
 	msg.AllocationReq = nil
-	msg.AllocationRep = &tmp
+	err := p.Store(req.Account.ToAccount(), req.Repl)
+	if err == nil {
+		go p.Republish(p.Accounts[req.Account.ID])
+		msg.AllocationRep = &NOERROR
+	} else {
+		errMsg := err.Error()
+		msg.AllocationRep = &errMsg
+	}
 
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
@@ -212,16 +218,21 @@ func (p *Passtor) HandleAllocation(msg Message) {
 // AllocateToPeer allocate some data to a peer, returns true on success,
 // false if cannot reach peer or error
 func (p *Passtor) AllocateToPeer(id Hash, peer NodeAddr, index, repl uint32,
-	data AccountNetwork) bool {
+	data AccountNetwork) error {
 
-	msg := Message{AllocationReq: &AllocateMessage{
-		Account:  data,
-		Repl:  repl,
-		Index: index,
+	msg := Message{AllocationReq: &AccountMessage{
+		Account: data,
+		Repl:    repl,
 	}}
 	rep := p.SendMessage(msg, peer.Addr, MINRETRIES)
-	return !(rep == nil) && rep.AllocationRep != nil &&
-		*rep.AllocationRep == NOERROR
+	if rep == nil {
+		return errors.New("No response from " + peer.Addr.String())
+	} else if rep.AllocationRep == nil {
+		return errors.New("Invalid response from " + peer.Addr.String())
+	} else if *rep.AllocationRep == NOERROR {
+		return nil
+	}
+	return errors.New(*rep.AllocationRep)
 }
 
 // Allocate given data identified by the given id to the given replication
@@ -251,10 +262,13 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 				index := uint32(len(allocations))
 				m.Unlock()
 				// allocation was a
-				if p.AllocateToPeer(id, peer, index, repl, data) {
+				err := p.AllocateToPeer(id, peer, index, repl, data)
+				if err == nil || err.Error() == ALREADYSTORED {
 					m.Lock()
 					allocations = append(allocations, peer)
 					break
+				} else {
+					p.Printer.ErrPrinter.Println(err.Error())
 				}
 				m.Lock()
 			}
@@ -269,14 +283,17 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 
 // HandleFetch searches for requested file, send it if it finds it
 func (p *Passtor) HandleFetch(msg Message) {
-	// TODO look for the data
-	// msg.FetchRep = nil if data not found
 
-	data := AccountNetwork{}
-
+	// if file is stored, return it
+	if data, ok := p.Accounts[*msg.FetchReq]; ok {
+		msg.FetchRep = &AccountMessage{
+			Account: data.Account.ToAccountNetwork(),
+			Repl:    data.Repl,
+		}
+	}
 	// writing reply
 	msg.FetchReq = nil
-	msg.FetchRep = &data
+
 	// sending reply
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
@@ -288,15 +305,22 @@ func (p *Passtor) FetchDataFromPeer(h *Hash, peer NodeAddr) *Message {
 }
 
 // FetchData request associated with given hash from the DHT
-func (p *Passtor) FetchData(h *Hash) *AccountNetwork {
+func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	peers := p.LookupReq(h)
 
-	count := 0
+	var min int
+	var count int
 	done := false
-	var data AccountNetwork
+	replies := make([]Account, 0)
+	var account Account
 	m := sync.Mutex{}
+	wg := sync.WaitGroup{}
 
+	// TODO
+	// waits for at least NREQ answers before calling MostRepresented(),
+	// take most frequent repl
 	for i := 0; i < REPL; i++ {
+		wg.Add(1)
 		go func() {
 			m.Lock()
 			for !done && count < len(peers) {
@@ -307,23 +331,63 @@ func (p *Passtor) FetchData(h *Hash) *AccountNetwork {
 					if d := rep.FetchRep; d != nil {
 						m.Lock()
 						if !done {
-							// TODO check that data.repl <= REPL
-							done = true
-							data = *d
+							min = int(math.Ceil(threshold * float64(d.Repl)))
+							replies = append(replies, d.Account.ToAccount())
+							if acc, ok := MostRepresented(replies, min); ok {
+								account = *acc
+								done = true
+								break
+							}
+							m.Unlock()
+						} else {
+							break
 						}
-						break
 					}
 				}
-
 				m.Lock()
 			}
 			m.Unlock()
+			wg.Done()
 		}()
 	}
+	wg.Wait()
 	if !done {
-		return nil
+		acc, _ := MostRepresented(replies, min)
+		return acc
 	}
-	return &data
+	return &account
+}
+
+// Republish account information in the DHT, called periodically
+func (p *Passtor) Republish(account *AccountInfo) {
+
+	// gen random delay between 0 and 2*repl*REPUBLISHINTERVAL minutes
+	delay := RandInt(int64(account.Repl) * int64(REPUBLISHINTERVAL) * 2 *
+		int64(time.Minute/time.Second))
+	// sleep for that time
+	time.Sleep(time.Duration(delay) * time.Second)
+
+	// check if version changed in the meantime, and republish only if it didn't
+	republish := false
+	p.Accounts[account.Account.ID].Mutex.Lock()
+	if p.Accounts[account.Account.ID].Account.Version == account.Account.Version {
+		// version did not change
+		republish = true
+	}
+	p.Accounts[account.Account.ID].Mutex.Unlock()
+
+	if republish {
+		// remove account from the passtor
+		p.Delete(account.Account.ID)
+
+		// publish it
+		addrs := p.Allocate(account.Account.ID, account.Repl,
+			account.Account.ToAccountNetwork())
+		// check if allocated to enough peers
+		if len(addrs) != int(account.Repl) {
+			p.Printer.WPrint("Couldn't reallocate to enough peers", V2)
+		}
+	}
 }
 
 // GetKCloser get the K closer nodes to given hash

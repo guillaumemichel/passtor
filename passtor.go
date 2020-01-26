@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"sync"
+
+	"go.dedis.ch/protobuf"
 )
 
 // NewPasstor creates and return a new Passtor instance
@@ -13,6 +15,8 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 	udpAddr, err := net.ResolveUDPAddr("udp4", addr)
 	checkErr(err)
 	pConn, err := net.ListenUDP("udp4", udpAddr)
+	checkErr(err)
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
 	checkErr(err)
 
 	// create the passtor printers
@@ -32,11 +36,13 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 
 	// create the passtor instance
 	p := Passtor{
-		Name:     name,
-		Messages: &c,
-		PConn:    pConn,
-		Printer:  printer,
-		Buckets:  make(map[uint16]*Bucket),
+		Name:       name,
+		Messages:   &c,
+		PConn:      pConn,
+		ClientAddr: tcpAddr,
+		Printer:    printer,
+		Buckets:    make(map[uint16]*Bucket),
+		Accounts:   make(map[Hash]*AccountInfo),
 	}
 	// set the passtor identifier
 	p.SetIdentity()
@@ -56,4 +62,52 @@ func (c MessageCounter) GetMessageID() uint64 {
 	id := *c.IDCounter
 	c.Mutex.Unlock()
 	return id
+}
+
+// ListenToPasstors listen on the udp connection used to communicate with other
+// passtors, and distribute received messages to HandleMessage()
+func (p *Passtor) ListenToPasstors() {
+	buf := make([]byte, BUFFERSIZE)
+
+	for {
+		// read new message
+		m, _, err := p.PConn.ReadFromUDP(buf)
+		checkErr(err)
+
+		// copy the receive buffer to avoid that it is modified while being used
+		tmp := make([]byte, m)
+		copy(tmp, buf[:m])
+
+		go p.HandleMessage(tmp)
+	}
+}
+
+func (p *Passtor) ListenToClients() {
+
+	server, err := net.ListenTCP("tcp4", p.ClientAddr)
+	accounts := make(Accounts)
+	if err != nil {
+		fmt.Println("Error while starting TCP server")
+		return
+	}
+	defer server.Close()
+
+	for {
+		conn, _ := server.Accept()
+
+		packetBytes := make([]byte, TCPMAXPACKETSIZE)
+		_, err := conn.Read(packetBytes)
+		if err != nil {
+			println("Unable to read packet from TCP connection")
+		}
+
+		var message ClientMessage
+		protobuf.Decode(packetBytes, &message)
+		response := p.HandleClientMessage(accounts, message)
+		responseBytes, err := protobuf.Encode(response)
+		if err != nil {
+			fmt.Println("Error while parsing response to be sent to client")
+		}
+		conn.Write(responseBytes)
+	}
 }

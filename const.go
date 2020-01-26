@@ -14,6 +14,10 @@ const (
 	ALPHA = 2
 	// REPL replication factor
 	REPL = 3
+	// NREQ minimal number of response after Fetch
+	NREQ = 3
+	// THRESHOLD of answers before returning
+	THRESHOLD = 0.333
 	// TIMEOUT value when waiting for an answer
 	TIMEOUT = 2 * time.Second
 	// MINRETRIES min number of attemps before giving up reaching an host
@@ -40,9 +44,17 @@ const (
 	V3 = 3
 	// TCPMAXPACKETSIZE is the largest size in bytes of a TCP packet
 	TCPMAXPACKETSIZE = 65535
-	// NOERROR string
-	NOERROR = ""
+	// REPUBLISHINTERVAL average time interval between republish
+	REPUBLISHINTERVAL = 5 * time.Minute
 )
+
+// Errors
+
+// NOERROR string
+var NOERROR = ""
+
+// ALREADYSTORED error string
+var ALREADYSTORED = "Account already stored and up-to-date"
 
 // MAXDISTANCE maximum distance between two hashes
 var MAXDISTANCE Hash

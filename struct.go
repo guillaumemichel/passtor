@@ -1,6 +1,7 @@
 package passtor
 
 import (
+	"github.com/rivo/tview"
 	"log"
 	"net"
 	"sync"
@@ -32,8 +33,8 @@ type Passtor struct {
 	Name   string // name of the passtor instance
 	NodeID Hash   // hash of the name of the passtor, node identifier
 
-	PConn *net.UDPConn // udp socket to communicate with other passtors
-	CConn *net.UDPConn // udp socket to communicate with clients
+	PConn      *net.UDPConn // udp socket to communicate with other passtors
+	ClientAddr *net.TCPAddr // tcp address to communicate with clients
 
 	Messages *MessageCounter // handles message id and pending messages
 
@@ -53,10 +54,10 @@ type Message struct {
 	Ping          *bool       // non nil if message is a ping message
 	LookupReq     *Hash       // value to lookup
 	LookupRep     *[]NodeAddr // lookup response
-	AllocationReq *AllocateMessage
+	AllocationReq *AccountMessage
 	AllocationRep *string
 	FetchReq      *Hash
-	FetchRep      *AccountNetwork
+	FetchRep      *AccountMessage
 }
 
 // Bucket structure representing Kademlia k-buckets
@@ -154,8 +155,14 @@ type AccountNetwork struct {
 	Signature Signature
 }
 
+type AccountInfo struct {
+	Account Account
+	Repl    uint32
+	Mutex   *sync.Mutex
+}
+
 // Accounts is the collection of all created accounts.
-type Accounts map[Hash]Account
+type Accounts map[Hash]*AccountInfo
 
 // ClientMessage represents a message than can be sent from a client to a node
 type ClientMessage struct {
@@ -170,9 +177,21 @@ type ServerResponse struct {
 	Data   *AccountNetwork
 }
 
-// AllocateMessage message requesting a node to allocate a file
-type AllocateMessage struct {
+// AccountMessage message requesting a node to allocate a file or fetching an
+// account info
+type AccountMessage struct {
 	Account AccountNetwork
-	Index   uint32
 	Repl    uint32
+}
+
+type accountCountPair struct {
+	Account Account
+	Count   int
+}
+
+type Client struct {
+	App           *tview.Application
+	Node          string
+	AccountClient AccountClient
+	Account       Account
 }

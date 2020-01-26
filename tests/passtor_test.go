@@ -2,8 +2,9 @@ package main
 
 import (
 	"bytes"
-	"gitlab.gnugen.ch/gmichel/passtor"
 	"testing"
+
+	"gitlab.gnugen.ch/gmichel/passtor"
 )
 
 // go test -v -count=1 gitlab.gnugen.ch/gmichel/passtor/tests
@@ -162,17 +163,17 @@ func TestStoreNewAccount(t *testing.T) {
 		t.Fail()
 	}
 
-	accounts := make(passtor.Accounts)
+	accounts := passtor.NewPasstor("issou", "127.0.0.1:5000", 1)
 
-	err := accounts.Store(account)
+	err := accounts.Store(account, 5)
 
 	if err != nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 }
@@ -200,14 +201,14 @@ func TestStoreIncorrectAccountFails(t *testing.T) {
 		t.Fail()
 	}
 
-	accounts := make(passtor.Accounts)
+	accounts := passtor.NewPasstor("issou", "127.0.0.1:5000", 1)
 
-	err := accounts.Store(account)
+	err := accounts.Store(account, 5)
 
 	if err == nil {
 		t.Fail()
 	}
-	if len(accounts) != 0 {
+	if len(accounts.Accounts) != 0 {
 		t.Fail()
 	}
 }
@@ -234,44 +235,44 @@ func TestStoreUpdateOldAccount(t *testing.T) {
 		t.Fail()
 	}
 
-	accounts := make(passtor.Accounts)
+	accounts := passtor.NewPasstor("issou", "127.0.0.1:5000", 1)
 
-	err := accounts.Store(account)
+	err := accounts.Store(account, 5)
 
 	if err != nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 
-	err = accounts.Store(account)
+	err = accounts.Store(account, 5)
 
 	if err == nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 
 	pkNew, _, _, _ := passtor.Generate()
 	account.Keys.PublicKey = pkNew
 
-	err = accounts.Store(account)
+	err = accounts.Store(account, 5)
 
 	if err == nil {
 		t.Fail()
 	}
-	if len(accounts) != 1 {
+	if len(accounts.Accounts) != 1 {
 		t.Fail()
 	}
-	if !accounts[account.ID].Verify() {
+	if !accounts.Accounts[account.ID].Account.Verify() {
 		t.Fail()
 	}
 }
@@ -549,6 +550,98 @@ func TestAccountNetworkIntegrity(t *testing.T) {
 	accountBack := accountNetwork.ToAccount()
 
 	if !accountBack.Verify() {
+		t.Fail()
+	}
+}
+
+func getAccount() passtor.Account {
+	ID := ""
+	pass := ""
+	secret := passtor.GetSecret(ID, pass)
+	pk, sk, k, _ := passtor.Generate()
+	keys, _, _, _ := passtor.KeysClient{
+		PublicKey:    pk,
+		PrivateKey:   sk,
+		SymmetricKey: k,
+	}.ToKeys(secret)
+
+	return passtor.Account{
+		ID:   passtor.H([]byte(ID)),
+		Keys: keys,
+	}.Sign(sk)
+}
+
+func TestMostRepresentedCorrectlyHandlesEmptyArrays(t *testing.T) {
+	var accounts []passtor.Account
+	mostR, thresh := passtor.MostRepresented(accounts, 0)
+	if mostR != nil {
+		t.Fail()
+	}
+	if thresh {
+		t.Fail()
+	}
+}
+
+func TestMostRepresentedIgnoresUnverifiedAccounts(t *testing.T) {
+	sign, _ := passtor.RandomBytes(passtor.SIGNATURESIZE)
+	account := getAccount()
+	account.Signature = passtor.BytesToSignature(sign)
+	accounts := []passtor.Account{account}
+	mostR, thresh := passtor.MostRepresented(accounts, 0)
+	if mostR != nil {
+		t.Fail()
+	}
+	if thresh {
+		t.Fail()
+	}
+}
+
+func TestMostRepresentedReturnsCorrectAccountIfAllAccountsAreIdenticalAndThreshIsNotMet(t *testing.T) {
+	account := getAccount()
+	accounts := []passtor.Account{account, account, account, account}
+	mostR, thresh := passtor.MostRepresented(accounts, 5)
+	if mostR == nil || mostR.Signature != account.Signature {
+		t.Fail()
+	}
+	if thresh {
+		t.Fail()
+	}
+}
+
+func TestMostRepresentedReturnsCorrectAccountIfAllAccountsAreIdenticalAndThreshIsMet(t *testing.T) {
+	account := getAccount()
+	accounts := []passtor.Account{account, account, account, account}
+	mostR, thresh := passtor.MostRepresented(accounts, 3)
+	if mostR == nil || mostR.Signature != account.Signature {
+		t.Fail()
+	}
+	if !thresh {
+		t.Fail()
+	}
+}
+
+func TestMostRepresentedReturnsCorrectAccountAndThreshIsNotMet(t *testing.T) {
+	account1 := getAccount()
+	account2 := getAccount()
+	accounts := []passtor.Account{account2, account2, account1, account2, account1}
+	mostR, thresh := passtor.MostRepresented(accounts, 5)
+	if mostR == nil || mostR.Signature != account2.Signature {
+		t.Fail()
+	}
+	if thresh {
+		t.Fail()
+	}
+}
+
+func TestMostRepresentedReturnsCorrectAccountAndThreshIsMet(t *testing.T) {
+	account1 := getAccount()
+	account2 := getAccount()
+	accounts := []passtor.Account{account2, account2, account1, account2, account1}
+	mostR, thresh := passtor.MostRepresented(accounts, 3)
+	if mostR == nil || mostR.Signature != account2.Signature {
+		t.Fail()
+	}
+	if !thresh {
 		t.Fail()
 	}
 }

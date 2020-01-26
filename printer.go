@@ -1,6 +1,7 @@
 package passtor
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 )
@@ -44,4 +45,8 @@ func (p *Passtor) PrintBuckets() {
 	}
 	str += "----------"
 	p.Printer.Print(str, V3)
+}
+
+func (h Hash) String() string {
+	return base64.StdEncoding.EncodeToString(h[:])
 }

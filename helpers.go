@@ -3,6 +3,7 @@ package passtor
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"math/big"
 	"net"
 	"sort"
 	"strings"
@@ -182,9 +183,9 @@ func GetKeysSorted(data map[Hash]Login) []Hash {
 	keysString := make([]string, len(data))
 
 	i := 0
-	for k, _ := range data {
+	for k := range data {
 		keysString[i] = base64.StdEncoding.EncodeToString(HashToBytes(k))
-		i += 1
+		i++
 	}
 	sort.Strings(keysString)
 
@@ -197,7 +198,7 @@ func GetKeysSorted(data map[Hash]Login) []Hash {
 			panic("base64 decoding failed")
 		}
 		keysHash[i] = BytesToHash(h)
-		i += 1
+		i++
 	}
 
 	return keysHash
@@ -211,4 +212,51 @@ func DuplicateMap(data map[Hash]Login) map[Hash]Login {
 	}
 
 	return newMap
+}
+
+// MostRepresented returns the most represented verified (in the sense of signature equality)
+func MostRepresented(accounts []Account, min int) (*Account, bool) {
+
+	verified := make([]Account, 0)
+	for _, account := range accounts {
+		if account.Verify() {
+			verified = append(verified, account)
+		}
+	}
+
+	if len(verified) == 0 {
+		return nil, false
+	}
+
+	signatureCounts := make(map[Signature]accountCountPair)
+	for _, account := range verified {
+		if count, alreadyExists := signatureCounts[account.Signature]; alreadyExists {
+			signatureCounts[account.Signature] = accountCountPair{Account: count.Account, Count: count.Count + 1}
+		} else {
+			signatureCounts[account.Signature] = accountCountPair{Account: account, Count: 1}
+		}
+	}
+
+	var mostRepresentedAccount Account
+	mostRepresentedOccurences := 0
+	for _, count := range signatureCounts {
+		if count.Count > mostRepresentedOccurences {
+			mostRepresentedOccurences = count.Count
+			mostRepresentedAccount = count.Account
+		}
+	}
+
+	threshIsMet := mostRepresentedOccurences >= min
+
+	return &mostRepresentedAccount, threshIsMet
+
+}
+
+// RandInt generate a random int64 between 0 and given n
+func RandInt(n int64) int64 {
+	nBig, err := rand.Int(rand.Reader, big.NewInt(n))
+	if err != nil {
+		panic(err)
+	}
+	return nBig.Int64()
 }
