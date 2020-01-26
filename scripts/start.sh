@@ -3,6 +3,8 @@
 rm -r logs >/dev/null 2>&1
 mkdir logs
 
+pkill -f server 2> /dev/null
+
 cd ../server
 go build
 
