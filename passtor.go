@@ -16,6 +16,8 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 	checkErr(err)
 	pConn, err := net.ListenUDP("udp4", udpAddr)
 	checkErr(err)
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
+	checkErr(err)
 
 	// create the passtor printers
 	printer := Printer{
@@ -34,12 +36,13 @@ func NewPasstor(name, addr string, verbose int) Passtor {
 
 	// create the passtor instance
 	p := Passtor{
-		Name:     name,
-		Messages: &c,
-		PConn:    pConn,
-		Printer:  printer,
-		Buckets:  make(map[uint16]*Bucket),
-		Accounts: make(map[Hash]*AccountInfo),
+		Name:       name,
+		Messages:   &c,
+		PConn:      pConn,
+		ClientAddr: tcpAddr,
+		Printer:    printer,
+		Buckets:    make(map[uint16]*Bucket),
+		Accounts:   make(map[Hash]*AccountInfo),
 	}
 	// set the passtor identifier
 	p.SetIdentity()
@@ -81,7 +84,7 @@ func (p *Passtor) ListenToPasstors() {
 
 func (p *Passtor) ListenToClients() {
 
-	server, err := net.Listen("tcp", ":8080")
+	server, err := net.ListenTCP("tcp4", p.ClientAddr)
 	accounts := make(Accounts)
 	if err != nil {
 		fmt.Println("Error while starting TCP server")

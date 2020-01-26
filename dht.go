@@ -203,8 +203,14 @@ func (p *Passtor) HandleAllocation(msg Message) {
 	req := msg.AllocationReq
 
 	msg.AllocationReq = nil
-	msg.AllocationRep = p.Store(req.Account.ToAccount(), req.Repl)
-	go p.Republish(p.Accounts[req.Account.ID])
+	err := p.Store(req.Account.ToAccount(), req.Repl)
+	if err == nil {
+		go p.Republish(p.Accounts[req.Account.ID])
+		msg.AllocationRep = &NOERROR
+	} else {
+		errMsg := err.Error()
+		msg.AllocationRep = &errMsg
+	}
 
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)
 }
@@ -221,8 +227,12 @@ func (p *Passtor) AllocateToPeer(id Hash, peer NodeAddr, index, repl uint32,
 	rep := p.SendMessage(msg, peer.Addr, MINRETRIES)
 	if rep == nil {
 		return errors.New("No response from " + peer.Addr.String())
+	} else if rep.AllocationRep == nil {
+		return errors.New("Invalid response from " + peer.Addr.String())
+	} else if *rep.AllocationRep == NOERROR {
+		return nil
 	}
-	return rep.AllocationRep
+	return errors.New(*rep.AllocationRep)
 }
 
 // Allocate given data identified by the given id to the given replication
@@ -272,19 +282,16 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 
 // HandleFetch searches for requested file, send it if it finds it
 func (p *Passtor) HandleFetch(msg Message) {
-	// TODO look for the data
-	// msg.FetchRep = nil if data not found
-
-	// writing reply
-	msg.FetchReq = nil
 
 	// if file is stored, return it
-	if data, ok := p.Accounts[*msg.LookupReq]; ok {
+	if data, ok := p.Accounts[*msg.FetchReq]; ok {
 		msg.FetchRep = &AccountMessage{
 			Account: data.Account.ToAccountNetwork(),
 			Repl:    data.Repl,
 		}
 	}
+	// writing reply
+	msg.FetchReq = nil
 
 	// sending reply
 	p.SendMessage(msg, msg.Sender.Addr, MINRETRIES)

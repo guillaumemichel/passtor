@@ -32,8 +32,8 @@ type Passtor struct {
 	Name   string // name of the passtor instance
 	NodeID Hash   // hash of the name of the passtor, node identifier
 
-	PConn *net.UDPConn // udp socket to communicate with other passtors
-	CConn *net.UDPConn // udp socket to communicate with clients
+	PConn      *net.UDPConn // udp socket to communicate with other passtors
+	ClientAddr *net.TCPAddr // tcp address to communicate with clients
 
 	Messages *MessageCounter // handles message id and pending messages
 
@@ -54,7 +54,7 @@ type Message struct {
 	LookupReq     *Hash       // value to lookup
 	LookupRep     *[]NodeAddr // lookup response
 	AllocationReq *AccountMessage
-	AllocationRep error
+	AllocationRep *string
 	FetchReq      *Hash
 	FetchRep      *AccountMessage
 }

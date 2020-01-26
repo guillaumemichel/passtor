@@ -13,7 +13,7 @@ const (
 	// ALPHA DHT concurrency parameter
 	ALPHA = 2
 	// REPL replication factor
-	REPL = 5
+	REPL = 3
 	// NREQ minimal number of response after Fetch
 	NREQ = 3
 	// THRESHOLD of answers before returning
@@ -44,11 +44,12 @@ const (
 	V3 = 3
 	// TCPMAXPACKETSIZE is the largest size in bytes of a TCP packet
 	TCPMAXPACKETSIZE = 65535
-	// NOERROR string
-	NOERROR = ""
 	// REPUBLISHINTERVAL average time interval between republish
 	REPUBLISHINTERVAL = 5 * time.Minute
 )
+
+// NOERROR string
+var NOERROR = ""
 
 // MAXDISTANCE maximum distance between two hashes
 var MAXDISTANCE Hash

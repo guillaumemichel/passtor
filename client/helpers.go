@@ -3,10 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"gitlab.gnugen.ch/gmichel/passtor"
 	"net"
 	"os"
 	"strings"
+
+	"gitlab.gnugen.ch/gmichel/passtor"
 
 	"go.dedis.ch/protobuf"
 )
@@ -71,6 +72,7 @@ func Request(message *passtor.ClientMessage, host string) *passtor.ServerRespons
 
 	reply := make([]byte, passtor.TCPMAXPACKETSIZE)
 	n, err := conn.Read(reply)
+	// TODO: do something with that err
 	var response passtor.ServerResponse
 	err = protobuf.Decode(reply[:n], &response)
 	AbortOnError(err, "Could not parse server response")

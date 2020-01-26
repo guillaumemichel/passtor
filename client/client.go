@@ -3,14 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/rivo/tview"
 	"gitlab.gnugen.ch/gmichel/passtor"
-	"os"
 )
 
 func handleNewAccount() (*passtor.AccountClient, *passtor.Account) {
 
-	if PromptUser("It seems that you don't have a username yet. Would you like to create a new Passtör account? [y/n]",
+	if PromptUser("It seems that you don't have a username yet. Would you "+
+		"like to create a new Passtör account? [y/n]",
 		[]string{"y", "n"}) == "n" {
 		fmt.Println("Okay bye.")
 		os.Exit(0)
@@ -92,9 +94,9 @@ func downloadAccount(username string, masterpass string, node string) (passtor.A
 
 	response := Request(query, node)
 
-	account := (*response.Data).ToAccount()
-
 	if response.Status == "ok" && response.Data != nil {
+		account := (*response.Data).ToAccount()
+
 		accountClient, err := account.ToAccountClient(username, passtor.GetSecret(username, masterpass))
 		AbortOnError(err, "Wrong password")
 
