@@ -1,6 +1,7 @@
 package passtor
 
 import (
+	"github.com/rivo/tview"
 	"log"
 	"net"
 	"sync"
@@ -186,4 +187,11 @@ type AccountMessage struct {
 type accountCountPair struct {
 	Account Account
 	Count   int
+}
+
+type Client struct {
+	App           *tview.Application
+	Node          string
+	AccountClient AccountClient
+	Account       Account
 }

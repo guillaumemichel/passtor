@@ -1,29 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"net"
-	"os"
-	"strings"
-
 	"gitlab.gnugen.ch/gmichel/passtor"
-
 	"go.dedis.ch/protobuf"
+	"net"
 )
-
-// PromptUser prompts the user with the given message until they enter a correct value
-func PromptUser(message string, expectedValues []string) string {
-
-	entry := ""
-	for ok := false; !ok; ok = (expectedValues == nil || Contains(expectedValues, entry)) {
-		fmt.Print(message + " ")
-		input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		entry = strings.Replace(input, "\n", "", -1)
-	}
-	return entry
-
-}
 
 // Contains returns true iff the given array is not empty and contains the given value
 func Contains(array []string, value string) bool {
@@ -45,7 +27,7 @@ func Contains(array []string, value string) bool {
 func AbortOnError(err error, message string) {
 	if err != nil {
 		fmt.Println("Error", message)
-		os.Exit(1)
+		client.App.Stop()
 	}
 }
 
@@ -55,7 +37,7 @@ func FailWithError(message string, debug *string) {
 	if debug != nil {
 		fmt.Println(*debug)
 	}
-	os.Exit(1)
+	client.App.Stop()
 }
 
 // Request queries the given node with the given message and returns the response from the server
