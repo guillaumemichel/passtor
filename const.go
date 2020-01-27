@@ -15,7 +15,7 @@ const (
 	// REPL replication factor
 	REPL = 3
 	// NREQ minimal number of response after Fetch
-	NREQ = 3
+	NREQ = 2
 	// THRESHOLD of answers before returning
 	THRESHOLD = 0.333
 	// TIMEOUT value when waiting for an answer

@@ -318,9 +318,6 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 
 	p.Printer.Print(fmt.Sprint("Fetching from:", peers[:REPL]), V2)
 
-	// TODO
-	// waits for at least NREQ answers before calling MostRepresented(),
-	// take most frequent repl
 	for i := 0; i < REPL; i++ {
 		wg.Add(1)
 		go func() {
@@ -335,7 +332,9 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 						if !done {
 							min = int(math.Ceil(threshold * float64(d.Repl)))
 							replies = append(replies, d.Account.ToAccount())
-							if acc, ok := MostRepresented(replies, min); ok {
+							if acc, ok := MostRepresented(replies, min); ok &&
+								len(replies) >= NREQ {
+
 								account = *acc
 								done = true
 								break

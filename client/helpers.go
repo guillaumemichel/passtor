@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net"
+
 	"gitlab.gnugen.ch/gmichel/passtor"
 	"go.dedis.ch/protobuf"
-	"net"
 )
 
 // Contains returns true iff the given array is not empty and contains the given value
@@ -54,7 +55,8 @@ func Request(message *passtor.ClientMessage, host string) *passtor.ServerRespons
 
 	reply := make([]byte, passtor.TCPMAXPACKETSIZE)
 	n, err := conn.Read(reply)
-	// TODO: do something with that err
+	AbortOnError(err, "Could not read packet from node")
+
 	var response passtor.ServerResponse
 	err = protobuf.Decode(reply[:n], &response)
 	AbortOnError(err, "Could not parse server response")
