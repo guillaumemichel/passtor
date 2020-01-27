@@ -74,7 +74,9 @@ func (p *Passtor) HandleMessage(protobufed []byte) {
 
 	if rep.Reply {
 		// if the message is a replyd istribute reply to thread that sent req
+		p.Messages.Mutex.Lock()
 		*p.Messages.PendingMsg[rep.ID] <- rep
+		p.Messages.Mutex.Unlock()
 		return
 	}
 
