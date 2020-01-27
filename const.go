@@ -44,8 +44,8 @@ const (
 	V3 = 3
 	// TCPMAXPACKETSIZE is the largest size in bytes of a TCP packet
 	TCPMAXPACKETSIZE = 65535
-	// REPUBLISHINTERVAL average time interval between republish
-	REPUBLISHINTERVAL = 5 * time.Minute
+	// REPUBLISHINTERVAL average time interval between republish in minutes
+	REPUBLISHINTERVAL = 1
 )
 
 // Errors

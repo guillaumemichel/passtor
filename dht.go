@@ -205,7 +205,8 @@ func (p *Passtor) HandleAllocation(msg Message) {
 	msg.AllocationReq = nil
 	err := p.Store(req.Account.ToAccount(), req.Repl)
 	if err == nil {
-		go p.Republish(p.Accounts[req.Account.ID])
+		p.Printer.Print(fmt.Sprint("Got V", req.Account.Version), V2)
+		go p.Republish(*p.Accounts[req.Account.ID])
 		msg.AllocationRep = &NOERROR
 	} else {
 		errMsg := err.Error()
@@ -277,7 +278,6 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 		}()
 	}
 	wg.Wait()
-	p.Printer.Print(fmt.Sprint("Allocated at:", allocations), V2)
 	return allocations
 }
 
@@ -361,11 +361,14 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 }
 
 // Republish account information in the DHT, called periodically
-func (p *Passtor) Republish(account *AccountInfo) {
+func (p *Passtor) Republish(account AccountInfo) {
 
 	// gen random delay between 0 and 2*repl*REPUBLISHINTERVAL minutes
 	delay := RandInt(int64(account.Repl) * int64(REPUBLISHINTERVAL) * 2 *
 		int64(time.Minute/time.Second))
+
+	p.Printer.Print(fmt.Sprint("I will republish ", account.Account.ID, " in ",
+		time.Duration(delay)*time.Second), V2)
 	// sleep for that time
 	time.Sleep(time.Duration(delay) * time.Second)
 
@@ -385,6 +388,9 @@ func (p *Passtor) Republish(account *AccountInfo) {
 		// publish it
 		addrs := p.Allocate(account.Account.ID, account.Repl,
 			account.Account.ToAccountNetwork())
+		p.Printer.Print(fmt.Sprint("Republished at:", addrs), V3)
+		p.Printer.Print(fmt.Sprint("Republished V", account.Account.Version), V2)
+
 		// check if allocated to enough peers
 		if len(addrs) != int(account.Repl) {
 			p.Printer.WPrint("Couldn't reallocate to enough peers", V2)
@@ -397,7 +403,6 @@ func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
 
 	if b, ok := p.Buckets[p.GetBucketID(h)]; ok && b.Size == DHTK {
 		// bucket exists append all addresses in list
-		h.PrintDistancesToHash(b.GetList())
 		return b.GetList()
 	}
 
@@ -412,8 +417,6 @@ func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
 		// (i xor h) < (j xor h)
 		return list[i].NodeID.XOR(*h).Compare(list[j].NodeID.XOR(*h)) < 0
 	})
-
-	h.PrintDistancesToHash(list)
 
 	size := DHTK
 	if len(list) < DHTK {
