@@ -107,7 +107,7 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 	m := sync.Mutex{}
 	for i, na := range initial {
 		statuses[i] = NewLookupStatus(na)
-		if statuses[i].NodeAddr.NodeID == p.Addr.NodeID {
+		if na.NodeID == p.Addr.NodeID {
 			statuses[i].Tested = true
 		}
 	}
@@ -115,8 +115,8 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 
 	for i := 0; i < ALPHA; i++ {
 		// ALPHA parallel requests iterating on the statuses
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			found := true
 			for found {
 				found = false
@@ -131,7 +131,7 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 						msg := Message{LookupReq: hash}
 						reply := p.SendMessage(msg, s.NodeAddr.Addr, MINRETRIES)
 						// now we tested this node
-						if reply == nil {
+						if reply == nil || reply.LookupRep == nil {
 							s.Failed = true
 						} else {
 							// update statuses with new results
@@ -171,7 +171,7 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 	sort.Slice(statuses, func(i, j int) bool {
 		// (!fail[i] && fail[j]) ||
 		//        (fail[i]==fail[j] && (dist(i, target) < dist(j, target)))
-		return (!statuses[i].Failed && statuses[j].Failed) &&
+		return (!statuses[i].Failed && statuses[j].Failed) ||
 			(statuses[i].Failed == statuses[j].Failed &&
 				statuses[i].NodeAddr.NodeID.XOR(*hash).Compare(
 					statuses[j].NodeAddr.NodeID.XOR(*hash)) < 0)
@@ -205,7 +205,8 @@ func (p *Passtor) HandleAllocation(msg Message) {
 	msg.AllocationReq = nil
 	err := p.Store(req.Account.ToAccount(), req.Repl)
 	if err == nil {
-		go p.Republish(p.Accounts[req.Account.ID])
+		p.Printer.Print(fmt.Sprint("Got V", req.Account.Version), V2)
+		go p.Republish(*p.Accounts[req.Account.ID])
 		msg.AllocationRep = &NOERROR
 	} else {
 		errMsg := err.Error()
@@ -277,7 +278,6 @@ func (p *Passtor) Allocate(id Hash, repl uint32, data AccountNetwork) []NodeAddr
 		}()
 	}
 	wg.Wait()
-	p.Printer.Print(fmt.Sprint("Allocated at:", allocations), V2)
 	return allocations
 }
 
@@ -316,9 +316,8 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	m := sync.Mutex{}
 	wg := sync.WaitGroup{}
 
-	// TODO
-	// waits for at least NREQ answers before calling MostRepresented(),
-	// take most frequent repl
+	p.Printer.Print(fmt.Sprint("Fetching from:", peers[:REPL]), V2)
+
 	for i := 0; i < REPL; i++ {
 		wg.Add(1)
 		go func() {
@@ -333,7 +332,9 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 						if !done {
 							min = int(math.Ceil(threshold * float64(d.Repl)))
 							replies = append(replies, d.Account.ToAccount())
-							if acc, ok := MostRepresented(replies, min); ok {
+							if acc, ok := MostRepresented(replies, min); ok &&
+								len(replies) >= NREQ {
+
 								account = *acc
 								done = true
 								break
@@ -359,11 +360,14 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 }
 
 // Republish account information in the DHT, called periodically
-func (p *Passtor) Republish(account *AccountInfo) {
+func (p *Passtor) Republish(account AccountInfo) {
 
 	// gen random delay between 0 and 2*repl*REPUBLISHINTERVAL minutes
 	delay := RandInt(int64(account.Repl) * int64(REPUBLISHINTERVAL) * 2 *
 		int64(time.Minute/time.Second))
+
+	p.Printer.Print(fmt.Sprint("I will republish ", account.Account.ID, " in ",
+		time.Duration(delay)*time.Second), V2)
 	// sleep for that time
 	time.Sleep(time.Duration(delay) * time.Second)
 
@@ -383,6 +387,9 @@ func (p *Passtor) Republish(account *AccountInfo) {
 		// publish it
 		addrs := p.Allocate(account.Account.ID, account.Repl,
 			account.Account.ToAccountNetwork())
+		p.Printer.Print(fmt.Sprint("Republished at:", addrs), V3)
+		p.Printer.Print(fmt.Sprint("Republished V", account.Account.Version), V2)
+
 		// check if allocated to enough peers
 		if len(addrs) != int(account.Repl) {
 			p.Printer.WPrint("Couldn't reallocate to enough peers", V2)

@@ -102,6 +102,8 @@ func (p *Passtor) HandleClientMessage(accounts Accounts, message ClientMessage) 
 	if message.Push != nil {
 		p.Printer.Print(fmt.Sprint("Push request ", message.Push.ID), V2)
 		providers := p.Allocate(message.Push.ID, REPL, *message.Push)
+		p.Printer.Print(fmt.Sprint("Allocated at:", providers), V2)
+
 		if len(providers) == REPL {
 			return &ServerResponse{
 				Status: "ok",
