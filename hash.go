@@ -1,6 +1,10 @@
 package passtor
 
 import (
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
+
 	"golang.org/x/crypto/sha3"
 )
 
@@ -35,4 +39,24 @@ func (hash0 Hash) Compare(hash1 Hash) int {
 		}
 	}
 	return 0
+}
+
+// String base64 representation of Hash
+func (hash0 Hash) String() string {
+	return base64.StdEncoding.EncodeToString(hash0[:])
+}
+
+// Hex representation of Hash
+func (hash0 Hash) Hex() string {
+	return hex.EncodeToString(hash0[:])
+}
+
+// PrintDistancesToHash print the distance from a list of node addresses to
+// a hash
+func (hash0 Hash) PrintDistancesToHash(list []NodeAddr) {
+	str := "Printing distance to " + hash0.String() + ":\n"
+	for _, a := range list {
+		str += fmt.Sprintln(a.NodeID.XOR(hash0).Hex(), a.Addr)
+	}
+	fmt.Print(str)
 }

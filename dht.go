@@ -107,7 +107,7 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 	m := sync.Mutex{}
 	for i, na := range initial {
 		statuses[i] = NewLookupStatus(na)
-		if statuses[i].NodeAddr.NodeID == p.Addr.NodeID {
+		if na.NodeID == p.Addr.NodeID {
 			statuses[i].Tested = true
 		}
 	}
@@ -115,8 +115,8 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 
 	for i := 0; i < ALPHA; i++ {
 		// ALPHA parallel requests iterating on the statuses
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			found := true
 			for found {
 				found = false
@@ -131,7 +131,7 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 						msg := Message{LookupReq: hash}
 						reply := p.SendMessage(msg, s.NodeAddr.Addr, MINRETRIES)
 						// now we tested this node
-						if reply == nil {
+						if reply == nil || reply.LookupRep == nil {
 							s.Failed = true
 						} else {
 							// update statuses with new results
@@ -171,7 +171,7 @@ func (p *Passtor) LookupReq(hash *Hash) []NodeAddr {
 	sort.Slice(statuses, func(i, j int) bool {
 		// (!fail[i] && fail[j]) ||
 		//        (fail[i]==fail[j] && (dist(i, target) < dist(j, target)))
-		return (!statuses[i].Failed && statuses[j].Failed) &&
+		return (!statuses[i].Failed && statuses[j].Failed) ||
 			(statuses[i].Failed == statuses[j].Failed &&
 				statuses[i].NodeAddr.NodeID.XOR(*hash).Compare(
 					statuses[j].NodeAddr.NodeID.XOR(*hash)) < 0)
@@ -316,6 +316,8 @@ func (p *Passtor) FetchData(h *Hash, threshold float64) *Account {
 	m := sync.Mutex{}
 	wg := sync.WaitGroup{}
 
+	p.Printer.Print(fmt.Sprint("Fetching from:", peers[:REPL]), V2)
+
 	// TODO
 	// waits for at least NREQ answers before calling MostRepresented(),
 	// take most frequent repl
@@ -395,6 +397,7 @@ func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
 
 	if b, ok := p.Buckets[p.GetBucketID(h)]; ok && b.Size == DHTK {
 		// bucket exists append all addresses in list
+		h.PrintDistancesToHash(b.GetList())
 		return b.GetList()
 	}
 
@@ -409,6 +412,8 @@ func (p *Passtor) GetKCloser(h *Hash) []NodeAddr {
 		// (i xor h) < (j xor h)
 		return list[i].NodeID.XOR(*h).Compare(list[j].NodeID.XOR(*h)) < 0
 	})
+
+	h.PrintDistancesToHash(list)
 
 	size := DHTK
 	if len(list) < DHTK {

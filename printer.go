@@ -1,7 +1,6 @@
 package passtor
 
 import (
-	"encoding/base64"
 	"fmt"
 	"os"
 )
@@ -47,6 +46,12 @@ func (p *Passtor) PrintBuckets() {
 	p.Printer.Print(str, V3)
 }
 
-func (h Hash) String() string {
-	return base64.StdEncoding.EncodeToString(h[:])
+// PrintStatuses print given lookup statuses
+func PrintStatuses(h Hash, statuses []*LookupStatus) {
+	str := "Printing lookup statuses:\n"
+	for _, s := range statuses {
+		str += fmt.Sprintln(*s)
+		str += fmt.Sprintln(s.NodeAddr.NodeID.XOR(h).Hex())
+	}
+	fmt.Print(str)
 }
