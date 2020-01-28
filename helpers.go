@@ -70,6 +70,29 @@ func RandomBytes(size uint) ([]byte, error) {
 	return bytes, nil
 }
 
+func BytesToSalt(array []byte) Salt {
+	if len(array) != SALTLENGTH {
+		panic("Array is expected to have size " + string(SALTLENGTH))
+	}
+
+	var salt = Salt{}
+	for i, b := range array {
+		salt[i] = b
+	}
+
+	return salt
+}
+
+func SaltToBytes(salt Salt) []byte {
+	array := make([]byte, len(salt))
+
+	for i, b := range salt {
+		array[i] = b
+	}
+
+	return array
+}
+
 // BytesToNonce converts a byte array to a Nonce type.
 func BytesToNonce(array []byte) Nonce {
 	if len(array) != NONCESIZE {

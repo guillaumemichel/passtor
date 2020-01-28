@@ -1,13 +1,14 @@
 package main
 
 import (
+	"errors"
 	"github.com/rivo/tview"
 	"gitlab.gnugen.ch/gmichel/passtor"
 )
 
 var client = passtor.Client{}
 
-func pushAccount() { // TODO: do after updating account
+func pushAccount() {
 	accountNetwork := client.Account.ToAccountNetwork()
 	message := &passtor.ClientMessage{
 		Push: &accountNetwork,
@@ -32,7 +33,10 @@ func createAccount(username string, masterpass string) {
 		},
 	}
 
-	account, err := accountClient.ToEmptyAccount(passtor.GetSecret(username, masterpass))
+	secret, secretSalt, err := passtor.NewSecret(username, masterpass)
+	AbortOnError(err, "Secret recovery failed")
+	account, err := accountClient.ToEmptyAccount(secret, secretSalt)
+	AbortOnError(err, "Empty account creation failed")
 
 	client.AccountClient = accountClient
 	client.Account = account
@@ -40,7 +44,24 @@ func createAccount(username string, masterpass string) {
 	pushAccount()
 }
 
-func downloadAccount(username string, masterpass string) {
+func goToWrongMasterPass() {
+	wrongMasterPassWarning := tview.NewModal().
+		SetText("WRONG MASTER PASSWORD").
+		AddButtons([]string{"ok"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "ok" {
+				goToLoginScreen()
+			} else {
+				FailWithError("something is fishy", nil)
+			}
+		})
+
+	wrongMasterPassWarning.SetBorder(true).SetTitle(" passtör ")
+
+	client.App.SetRoot(wrongMasterPassWarning, true).SetFocus(wrongMasterPassWarning)
+}
+
+func downloadAccount(username string, masterpass string) error {
 	h := passtor.H([]byte(username))
 	query := &passtor.ClientMessage{
 		Pull: &h,
@@ -51,16 +72,20 @@ func downloadAccount(username string, masterpass string) {
 	if response.Status == "ok" && response.Data != nil {
 		account := (*response.Data).ToAccount()
 
-		accountClient, err := account.ToAccountClient(username, passtor.GetSecret(username, masterpass))
-		AbortOnError(err, "Wrong password")
+		accountClient, err := account.ToAccountClient(username, passtor.ComputeSecret(username, masterpass, account.MetaData.SecretSalt))
+		if err != nil {
+			goToWrongMasterPass()
 
-		client.AccountClient = accountClient
-		client.Account = account
+			return errors.New("wrong masterpass")
+		} else {
+			client.AccountClient = accountClient
+			client.Account = account
 
-		return
+			return nil
+		}
+	} else {
+		return errors.New("status not ok")
 	}
-
-	FailWithError("Error while fetching your account", response.Debug)
 }
 
 func goToLogin(loginClient passtor.LoginClient) {
@@ -179,16 +204,9 @@ func goToLoginCreation() {
 	client.App.SetRoot(createLoginScreen, true).SetFocus(createLoginScreen)
 }
 
-func main() {
+func goToLoginScreen() {
 	USERNAME_GLOBAL := ""
 	MASTERPASS_GLOBAL := ""
-
-	client = passtor.Client{
-		App:           tview.NewApplication(),
-		Node:          "127.0.0.1:6000",
-		AccountClient: passtor.AccountClient{},
-		Account:       passtor.Account{},
-	}
 
 	loginScreen := tview.NewForm().
 		AddInputField("node", client.Node, 65, nil, func(node string) {
@@ -201,11 +219,15 @@ func main() {
 			MASTERPASS_GLOBAL = masterpass
 		}).
 		AddButton("login", func() {
-			downloadAccount(USERNAME_GLOBAL, MASTERPASS_GLOBAL)
-			USERNAME_GLOBAL = ""
-			MASTERPASS_GLOBAL = ""
+			err := downloadAccount(USERNAME_GLOBAL, MASTERPASS_GLOBAL)
+			if err != nil {
 
-			goToLogins()
+			} else {
+				USERNAME_GLOBAL = ""
+				MASTERPASS_GLOBAL = ""
+
+				goToLogins()
+			}
 		}).
 		AddButton("create", func() {
 			createAccount(USERNAME_GLOBAL, MASTERPASS_GLOBAL)
@@ -224,4 +246,15 @@ func main() {
 	if err := client.App.SetRoot(loginScreen, true).SetFocus(loginScreen).Run(); err != nil {
 		panic(err)
 	}
+}
+
+func main() {
+	client = passtor.Client{
+		App:           tview.NewApplication(),
+		Node:          "127.0.0.1:6000",
+		AccountClient: passtor.AccountClient{},
+		Account:       passtor.Account{},
+	}
+
+	goToLoginScreen()
 }

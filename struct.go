@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+// TODO: enter own password for creation and for change
+
 // NodeAddr node address entry in the k-bucket, node udp ip and port, and nodeID
 type NodeAddr struct {
 	Addr   net.UDPAddr // udp address (ip + port) of the node
@@ -125,6 +127,7 @@ type Keys struct {
 
 // AccountMetaData for the Account structure.
 type AccountMetaData struct {
+	SecretSalt          Salt
 	PrivateKeySeedNonce Nonce
 	SymmetricKeyNonce   Nonce
 }

@@ -24,18 +24,32 @@ const (
 // Secret is the secret used by the user to locally decrypt its symmetric key K and secret key sk
 type Secret = SymmetricKey
 
-// Secret generates a secret for the given user
-func GetSecret(userID, masterPassword string) Secret {
+type Salt [SALTLENGTH]byte
+
+func ComputeSecret(userID, masterPassword string, salt Salt) Secret {
 	return KDFToSecret(argon2.Key(
 		[]byte(userID+masterPassword),
-		generateSalt(SALTLENGTH),
-		ARGONITERATIONS, ARGONMEMORY,
+		SaltToBytes(salt),
+		ARGONITERATIONS,
+		ARGONMEMORY,
 		ARGONPARALELLISM,
 		SECRETLENGTH,
 	))
 }
 
-// generateSalt generates a default salt
-func generateSalt(size uint32) []byte {
-	return make([]byte, size)
+// Secret generates a secret for the given user
+func NewSecret(userID, masterPassword string) (Secret, Salt, error) {
+	salt, err := RandomBytes(SALTLENGTH)
+	if err != nil {
+		return Secret{}, Salt{}, err
+	}
+
+	return KDFToSecret(argon2.Key(
+		[]byte(userID+masterPassword),
+		salt,
+		ARGONITERATIONS,
+		ARGONMEMORY,
+		ARGONPARALELLISM,
+		SECRETLENGTH,
+	)), BytesToSalt(salt), nil
 }

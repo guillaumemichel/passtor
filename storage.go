@@ -31,7 +31,7 @@ func (keys Keys) Hash() Hash {
 }
 
 func (accountMetaData AccountMetaData) Hash() Hash {
-	return H(append(NonceToBytes(accountMetaData.PrivateKeySeedNonce), NonceToBytes(accountMetaData.SymmetricKeyNonce)...))
+	return H(append(SaltToBytes(accountMetaData.SecretSalt), append(NonceToBytes(accountMetaData.PrivateKeySeedNonce), NonceToBytes(accountMetaData.SymmetricKeyNonce)...)...))
 }
 
 func HashLogins(logins map[Hash]Login) Hash {
@@ -111,7 +111,7 @@ func (accountClient AccountClient) GetID() Hash {
 	return H([]byte(accountClient.ID))
 }
 
-func (accountClient AccountClient) ToEmptyAccount(secret Secret) (Account, error) {
+func (accountClient AccountClient) ToEmptyAccount(secret Secret, secretSalt Salt) (Account, error) {
 	keys, skNonce, symmKNonce, err := accountClient.Keys.ToKeys(secret)
 	if err != nil {
 		return Account{}, err
@@ -123,6 +123,7 @@ func (accountClient AccountClient) ToEmptyAccount(secret Secret) (Account, error
 		Version: 0,
 		Data:    map[Hash]Login{},
 		MetaData: AccountMetaData{
+			SecretSalt:          secretSalt,
 			PrivateKeySeedNonce: skNonce,
 			SymmetricKeyNonce:   symmKNonce,
 		},

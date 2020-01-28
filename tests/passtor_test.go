@@ -55,7 +55,7 @@ func TestVerifyOfASignatureReturnsCorrect(t *testing.T) {
 func TestToKeysToKeysClient(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, _, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -82,7 +82,7 @@ func TestToKeysToKeysClient(t *testing.T) {
 func TestAccountSignedVerifies(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -96,7 +96,7 @@ func TestAccountSignedVerifies(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 
 	if !account.Verify() {
 		t.Fail()
@@ -106,7 +106,7 @@ func TestAccountSignedVerifies(t *testing.T) {
 func TestAccountConversionsMatch(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -120,7 +120,7 @@ func TestAccountConversionsMatch(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 
 	accountPlain, _ := account.ToAccountClient(username, secret)
 
@@ -144,7 +144,7 @@ func TestAccountConversionsMatch(t *testing.T) {
 func TestStoreNewAccount(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -158,7 +158,7 @@ func TestStoreNewAccount(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 	if !account.Verify() {
 		t.Fail()
 	}
@@ -181,7 +181,7 @@ func TestStoreNewAccount(t *testing.T) {
 func TestStoreIncorrectAccountFails(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -195,7 +195,7 @@ func TestStoreIncorrectAccountFails(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 	account.Version = 3
 	if account.Verify() {
 		t.Fail()
@@ -216,7 +216,7 @@ func TestStoreIncorrectAccountFails(t *testing.T) {
 func TestStoreUpdateOldAccount(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -230,7 +230,7 @@ func TestStoreUpdateOldAccount(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 	if !account.Verify() {
 		t.Fail()
 	}
@@ -305,7 +305,7 @@ func TestToNewLoginDataIntegrity(t *testing.T) {
 func TestLoginAddUpdateDelete(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -319,7 +319,7 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 	if !account.Verify() {
 		t.Fail()
 	}
@@ -398,7 +398,7 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 func TestGetLoginClientList(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -412,7 +412,7 @@ func TestGetLoginClientList(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 
 	loginClientTwitter := passtor.LoginClient{
 		Service:  "twitter",
@@ -463,7 +463,7 @@ func TestGetLoginClientList(t *testing.T) {
 func TestGetPassword(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -477,7 +477,7 @@ func TestGetPassword(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 
 	loginClientTwitter := passtor.LoginClient{
 		Service:  "twitter",
@@ -511,7 +511,7 @@ func TestGetPassword(t *testing.T) {
 func TestAccountNetworkIntegrity(t *testing.T) {
 	username, mpass := getUser()
 
-	secret := passtor.GetSecret(username, mpass)
+	secret, secretSalt, _ := passtor.NewSecret(username, mpass)
 	pk, sk, symmK, _ := passtor.Generate()
 
 	keysClient := passtor.KeysClient{
@@ -525,7 +525,7 @@ func TestAccountNetworkIntegrity(t *testing.T) {
 		Keys: keysClient,
 	}
 
-	account, _ := accountClient.ToEmptyAccount(secret)
+	account, _ := accountClient.ToEmptyAccount(secret, secretSalt)
 
 	loginClientTwitter := passtor.LoginClient{
 		Service:  "twitter",
@@ -557,7 +557,7 @@ func TestAccountNetworkIntegrity(t *testing.T) {
 func getAccount() passtor.Account {
 	ID := ""
 	pass := ""
-	secret := passtor.GetSecret(ID, pass)
+	secret, _, _ := passtor.NewSecret(ID, pass)
 	pk, sk, k, _ := passtor.Generate()
 	keys, _, _, _ := passtor.KeysClient{
 		PublicKey:    pk,
