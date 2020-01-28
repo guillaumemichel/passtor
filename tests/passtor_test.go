@@ -291,7 +291,7 @@ func TestToNewLoginDataIntegrity(t *testing.T) {
 		Username: "@trump",
 	}
 
-	login, _ := loginClient.ToNewLogin(keysClient)
+	login, _ := loginClient.ToNewLogin(keysClient, "trumptrump")
 	loginPlain, _ := login.ToLoginClient(keysClient.SymmetricKey)
 
 	if loginClient.Service != loginPlain.Service {
@@ -335,7 +335,7 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 		Username: "@trump",
 	}
 
-	account, _ = account.AddLogin(loginClientTwitter, keysClient)
+	account, _ = account.AddLogin(loginClientTwitter, "trumptrump", keysClient)
 	if len(account.Data) != 1 {
 		t.Fail()
 	}
@@ -353,12 +353,12 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 		t.Log("PASSWORD: " + string(passwordPlain))
 	}
 
-	_, err := account.AddLogin(loginClientTwitter, keysClient)
+	_, err := account.AddLogin(loginClientTwitter, "", keysClient)
 	if err == nil {
 		t.Fail()
 	}
 
-	account, _ = account.UpdateLoginPassword(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient)
+	account, _ = account.UpdateLoginPassword(loginClientTwitter.GetID(keysClient.SymmetricKey), "", keysClient)
 	if len(account.Data) != 1 {
 		t.Fail()
 	}
@@ -384,7 +384,7 @@ func TestLoginAddUpdateDelete(t *testing.T) {
 		t.Fail()
 	}
 
-	_, err = account.UpdateLoginPassword(loginClientTwitter.GetID(keysClient.SymmetricKey), keysClient)
+	_, err = account.UpdateLoginPassword(loginClientTwitter.GetID(keysClient.SymmetricKey), "trumptrump", keysClient)
 	if err == nil {
 		t.Fail()
 	}
@@ -429,9 +429,9 @@ func TestGetLoginClientList(t *testing.T) {
 		Username: "@trump_reddit",
 	}
 
-	account, _ = account.AddLogin(loginClientTwitter, keysClient)
-	account, _ = account.AddLogin(loginClientMastodon, keysClient)
-	account, _ = account.AddLogin(loginClientReddit, keysClient)
+	account, _ = account.AddLogin(loginClientTwitter, "", keysClient)
+	account, _ = account.AddLogin(loginClientMastodon, "", keysClient)
+	account, _ = account.AddLogin(loginClientReddit, "trumptrump", keysClient)
 	if len(account.Data) != 3 {
 		t.Fail()
 	}
@@ -494,9 +494,9 @@ func TestGetPassword(t *testing.T) {
 		Username: "@trump_reddit",
 	}
 
-	account, _ = account.AddLogin(loginClientTwitter, keysClient)
-	account, _ = account.AddLogin(loginClientMastodon, keysClient)
-	account, _ = account.AddLogin(loginClientReddit, keysClient)
+	account, _ = account.AddLogin(loginClientTwitter, "", keysClient)
+	account, _ = account.AddLogin(loginClientMastodon, "", keysClient)
+	account, _ = account.AddLogin(loginClientReddit, "trumptrump", keysClient)
 
 	loginList, _ := account.GetLoginClientList(keysClient.SymmetricKey)
 
@@ -542,9 +542,9 @@ func TestAccountNetworkIntegrity(t *testing.T) {
 		Username: "@trump_reddit",
 	}
 
-	account, _ = account.AddLogin(loginClientTwitter, keysClient)
-	account, _ = account.AddLogin(loginClientMastodon, keysClient)
-	account, _ = account.AddLogin(loginClientReddit, keysClient)
+	account, _ = account.AddLogin(loginClientTwitter, "", keysClient)
+	account, _ = account.AddLogin(loginClientMastodon, "", keysClient)
+	account, _ = account.AddLogin(loginClientReddit, "trump trump", keysClient)
 
 	accountNetwork := account.ToAccountNetwork()
 	accountBack := accountNetwork.ToAccount()

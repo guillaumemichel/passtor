@@ -168,7 +168,7 @@ func (loginClient LoginClient) GetID(symmK SymmetricKey) Hash {
 	return H(append([]byte(loginClient.Service), append([]byte(loginClient.Username), SymmetricKeyToBytes(symmK)...)...))
 }
 
-func (loginClient LoginClient) ToNewLogin(keysClient KeysClient) (Login, error) {
+func (loginClient LoginClient) ToNewLogin(keysClient KeysClient, loginPassword string) (Login, error) {
 	serviceEncrypted, serviceNonce, err := Encrypt([]byte(loginClient.Service), keysClient.SymmetricKey)
 	if err != nil {
 		return Login{}, err
@@ -179,10 +179,14 @@ func (loginClient LoginClient) ToNewLogin(keysClient KeysClient) (Login, error) 
 		return Login{}, err
 	}
 
-	password, err := Passphrase()
-	if err != nil {
-		return Login{}, err
+	password := loginPassword
+	if password == "" {
+		password, err = Passphrase()
+		if err != nil {
+			return Login{}, err
+		}
 	}
+
 	passwordEncrypted, passwordNonce, err := Encrypt([]byte(password), keysClient.SymmetricKey)
 	if err != nil {
 		return Login{}, err
@@ -203,12 +207,12 @@ func (loginClient LoginClient) ToNewLogin(keysClient KeysClient) (Login, error) 
 	}, nil
 }
 
-func (account Account) AddLogin(loginClient LoginClient, keysClient KeysClient) (Account, error) {
+func (account Account) AddLogin(loginClient LoginClient, loginPassword string, keysClient KeysClient) (Account, error) {
 	if !account.Verify() {
 		return Account{}, errors.New("account does not verify")
 	}
 
-	login, err := loginClient.ToNewLogin(keysClient)
+	login, err := loginClient.ToNewLogin(keysClient, loginPassword)
 	if err != nil {
 		return Account{}, err
 	}
@@ -252,7 +256,7 @@ func (account Account) DeleteLogin(ID Hash, sk PrivateKey) (Account, error) {
 	}.Sign(sk), nil
 }
 
-func (account Account) UpdateLoginPassword(ID Hash, keysClient KeysClient) (Account, error) {
+func (account Account) UpdateLoginPassword(ID Hash, loginPassword string, keysClient KeysClient) (Account, error) {
 	if !account.Verify() {
 		return Account{}, errors.New("account does not verify")
 	}
@@ -274,7 +278,7 @@ func (account Account) UpdateLoginPassword(ID Hash, keysClient KeysClient) (Acco
 	login, err := LoginClient{
 		Service:  string(servicePlain),
 		Username: string(usernamePlain),
-	}.ToNewLogin(keysClient)
+	}.ToNewLogin(keysClient, loginPassword)
 	if err != nil {
 		return Account{}, err
 	}
