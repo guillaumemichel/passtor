@@ -19,7 +19,7 @@ const (
 	// THRESHOLD of answers before returning
 	THRESHOLD = 0.333
 	// TIMEOUT value when waiting for an answer
-	TIMEOUT = 2 * time.Second
+	TIMEOUT = 1 * time.Second
 	// MINRETRIES min number of attemps before giving up reaching an host
 	MINRETRIES = 1
 	// MAXRETRIES max number of attemps before giving up reaching an host
