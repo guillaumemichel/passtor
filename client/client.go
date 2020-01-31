@@ -146,7 +146,7 @@ func goToLogin(loginClient passtor.LoginClient) {
 				goToLogins()
 			} else if buttonLabel == "copy" {
 				_ = clipboard.WriteAll(string(password))
-				scheduleEmptyClipboard(passtor.H(password))
+				go scheduleEmptyClipboard(passtor.H(password))
 			} else if buttonLabel == "change" {
 				goToChangePass(loginClient)
 			} else if buttonLabel == "delete" {
