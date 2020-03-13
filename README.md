@@ -2,6 +2,10 @@
 
 Authors: Cedric Maire, Guillaume Michel, Xavier Pantet
 
+## Project design
+
+All design specifications can be found [here](specifications.pdf).
+
 ## Files
 
 - ### [client/](client)
