@@ -51,7 +51,7 @@ All system constants are defined in [const.go](const.go).
 To run this project you can run the following code:
 
 ```
-git clone https://gitlab.gnugen.ch/gmichel/passtor
+git clone https://github.com/guillaumemichel/passtor
 cd passtor
 go build
 ```
