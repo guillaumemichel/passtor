@@ -3,6 +3,7 @@ package passtor
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"math/big"
 	"net"
 	"sort"
@@ -72,7 +73,7 @@ func RandomBytes(size uint) ([]byte, error) {
 
 func BytesToSalt(array []byte) Salt {
 	if len(array) != SALTLENGTH {
-		panic("Array is expected to have size " + string(SALTLENGTH))
+		panic("Array is expected to have size " + fmt.Sprint(SALTLENGTH))
 	}
 
 	var salt = Salt{}
@@ -96,7 +97,7 @@ func SaltToBytes(salt Salt) []byte {
 // BytesToNonce converts a byte array to a Nonce type.
 func BytesToNonce(array []byte) Nonce {
 	if len(array) != NONCESIZE {
-		panic("Array is expected to have size " + string(NONCESIZE))
+		panic("Array is expected to have size " + fmt.Sprint(NONCESIZE))
 	}
 
 	var nonce = Nonce{}
@@ -120,7 +121,7 @@ func NonceToBytes(nonce Nonce) []byte {
 // BytesToSymmetricKey creates a symmetric key from an array of bytes
 func BytesToSymmetricKey(array []byte) SymmetricKey {
 	if len(array) != SYMMKEYSIZE {
-		panic("Array is expected to have size " + string(SYMMKEYSIZE))
+		panic("Array is expected to have size " + fmt.Sprint(SYMMKEYSIZE))
 	}
 
 	var symmKey = [SYMMKEYSIZE]byte{}
@@ -145,7 +146,7 @@ func SymmetricKeyToBytes(symmK SymmetricKey) []byte {
 
 func BytesToSignature(array []byte) Signature {
 	if len(array) != SIGNATURESIZE {
-		panic("Array is expected to have size " + string(SIGNATURESIZE))
+		panic("Array is expected to have size " + fmt.Sprint(SIGNATURESIZE))
 	}
 
 	var sig = Signature{}
@@ -168,7 +169,7 @@ func SignatureToBytes(signature Signature) []byte {
 
 func KDFToSecret(array []byte) Secret {
 	if len(array) != SECRETLENGTH {
-		panic("Array is expected to have size " + string(SECRETLENGTH))
+		panic("Array is expected to have size " + fmt.Sprint(SECRETLENGTH))
 	}
 
 	var secret = Secret{}
@@ -191,7 +192,7 @@ func HashToBytes(h Hash) []byte {
 
 func BytesToHash(array []byte) Hash {
 	if len(array) != HASHSIZE {
-		panic("Array is expected to have size " + string(HASHSIZE))
+		panic("Array is expected to have size " + fmt.Sprint(HASHSIZE))
 	}
 
 	var h = Hash{}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"gitlab.gnugen.ch/gmichel/passtor"
+	"github.com/guillaumemichel/passtor"
 )
 
 // go test -v -count=1 gitlab.gnugen.ch/gmichel/passtor/tests

@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gitlab.gnugen.ch/gmichel/passtor"
+	"github.com/guillaumemichel/passtor"
 )
 
 func main() {
