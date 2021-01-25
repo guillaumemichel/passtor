@@ -2,10 +2,11 @@ package main
 
 import (
 	"errors"
-	"github.com/atotto/clipboard"
-	"github.com/rivo/tview"
-	"gitlab.gnugen.ch/gmichel/passtor"
 	"time"
+
+	"github.com/atotto/clipboard"
+	"github.com/guillaumemichel/passtor"
+	"github.com/rivo/tview"
 )
 
 var client = passtor.Client{}

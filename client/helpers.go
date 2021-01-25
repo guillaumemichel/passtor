@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"gitlab.gnugen.ch/gmichel/passtor"
+	"github.com/guillaumemichel/passtor"
 	"go.dedis.ch/protobuf"
 )
 
